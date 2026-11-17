@@ -1,414 +1,194 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>予定＆家計簿 Calm UI</title>
-  <meta name="theme-color" content="#1E293B">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="予定＆家計簿">
-  <link rel="manifest" href="./manifest.json">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%231E293B'/%3E%3Crect x='34' y='44' width='112' height='98' rx='18' fill='%23F8FAFC'/%3E%3Crect x='34' y='44' width='112' height='28' rx='12' fill='%234A8B71'/%3E%3Ccircle cx='66' cy='96' r='8' fill='%231E293B'/%3E%3Ccircle cx='90' cy='96' r='8' fill='%231E293B'/%3E%3Ccircle cx='114' cy='96' r='8' fill='%23C28540'/%3E%3Ccircle cx='66' cy='120' r='8' fill='%2394A3B8'/%3E%3Ccircle cx='90' cy='120' r='8' fill='%2394A3B8'/%3E%3C/svg%3E">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>スマート予定＆家計簿カレンダー</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body {
-      user-select: none;
-      -webkit-user-select: none;
-      font-feature-settings: "palt";
-      -webkit-font-smoothing: antialiased;
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
     }
-    input, textarea, select { user-select: auto; -webkit-user-select: auto; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    body {
+      background-color: #F5F5F4;
+      color: #1E293B;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      overscroll-behavior-y: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes slideInFromRight {
+      0% { opacity: 0.25; transform: translateX(36px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideInFromLeft {
+      0% { opacity: 0.25; transform: translateX(-36px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    .animate-slide-next {
+      animation: slideInFromRight 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .animate-slide-prev {
+      animation: slideInFromLeft 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
   </style>
 </head>
-<body class="bg-stone-200/70 min-h-screen text-slate-800 flex justify-center">
-  <div id="root" class="w-full max-w-md bg-stone-50 min-h-screen flex flex-col shadow-xl border-x border-stone-200/80"></div>
-
-  <script>
-    window.onerror = function(msg, url, line) {
-      var root = document.getElementById('root');
-      if (root && !root.innerHTML) {
-        root.innerHTML = '<div style="padding:20px;color:#B91C1C;font-size:12px;">エラーが発生しました: ' + msg + ' (Line: ' + line + ')</div>';
-      }
-    };
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').catch(function() {});
-      });
-    }
-  </script>
+<body>
+  <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     const COLOR_PALETTE = [
-      { name: '仕事・学業', color: '#476C9B' },
-      { name: '遊び・交際', color: '#B85D7A' },
-      { name: '食費・買物', color: '#C28540' },
-      { name: '交通・移動', color: '#3E7B67' },
-      { name: 'バイト・収入', color: '#4A8B71' },
-      { name: '固定費・重要', color: '#78689E' },
-      { name: 'その他', color: '#64748B' }
-    ];
-
-    // デフォルトのワンタップ定型文は1件のみ
-    const DEFAULT_TEMPLATES = [
-      { id: 'tpl_1', title: 'ランチ・食費', amount: 600, isExpense: true, color: '#C28540', memo: '' }
+      { name: '食費・カフェ', color: '#C28540' },
+      { name: '日用品・買物', color: '#3E7B67' },
+      { name: '交通・バイク', color: '#3B6E8C' },
+      { name: '交際・趣味', color: '#9E5874' },
+      { name: '固定費・学業', color: '#5B6270' },
+      { name: '収入・バイト', color: '#2E7D5B' },
     ];
 
     const IMPORT_COLOR_PRESETS = [
-      { name: 'セージグリーン', color: '#3E7B67' },
-      { name: 'ダスティローズ', color: '#A8556F' },
-      { name: 'テラコッタ', color: '#B56547' },
-      { name: 'スレートブルー', color: '#486B8A' },
-      { name: 'モーブパープル', color: '#735E8C' },
-      { name: '元の色のまま', color: 'ORIGINAL' }
+      { name: '元の色', color: 'ORIGINAL' },
+      { name: 'セージ', color: '#3E7B67' },
+      { name: 'ローズ', color: '#B85D6F' },
+      { name: 'ブルー', color: '#3B6E8C' },
+      { name: 'アンバー', color: '#C28540' },
     ];
 
-    const getCategoryNameByColor = (colorHex) => {
-      if (!colorHex) return 'その他';
-      const found = COLOR_PALETTE.find(c => c.color.toLowerCase() === colorHex.toLowerCase());
+    const REMINDER_OPTIONS = [
+      { value: 'none', label: '通知なし' },
+      { value: '0', label: '開始時刻' },
+      { value: '10', label: '10分前' },
+      { value: '30', label: '30分前' },
+      { value: '60', label: '1時間前' },
+      { value: '1440', label: '1日前' },
+    ];
+
+    const formatDateStr = (dateObj) => {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    const addDaysStr = (dateStr, days) => {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d + days);
+      return formatDateStr(dt);
+    };
+
+    const diffDays = (startStr, endStr) => {
+      const [sy, sm, sd] = startStr.split('-').map(Number);
+      const [ey, em, ed] = endStr.split('-').map(Number);
+      const s = new Date(sy, sm - 1, sd);
+      const e = new Date(ey, em - 1, ed);
+      return Math.round((e - s) / (1000 * 60 * 60 * 24));
+    };
+
+    const getPaydayDateStr = (year, monthIndex0, payDay) => {
+      let targetYear = year;
+      let targetMonth = monthIndex0 + 1;
+      if (targetMonth > 11) {
+        targetMonth = 0;
+        targetYear += 1;
+      }
+      const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const actualDay = payDay === 31 ? lastDay : Math.min(payDay || 25, lastDay);
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(actualDay).padStart(2, '0')}`;
+    };
+
+    const calculateShiftDetails = (startTime, endTime, job) => {
+      if (!startTime || !endTime || !job) return null;
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      let startMins = sh * 60 + sm;
+      let endMins = eh * 60 + em;
+      if (endMins <= startMins) endMins += 24 * 60;
+
+      const totalMins = endMins - startMins;
+      let breakMins = 0;
+      if (job.autoBreak) {
+        if (totalMins > 480) breakMins = 60;
+        else if (totalMins > 360) breakMins = 45;
+      }
+
+      let nightMins = 0;
+      if (job.nightBonus !== false) {
+        for (let m = startMins; m < endMins; m++) {
+          const mod = m % 1440;
+          if (mod >= 1320 || mod < 300) nightMins++;
+        }
+      }
+
+      const ratio = totalMins > 0 ? (totalMins - breakMins) / totalMins : 0;
+      const effectiveTotalMins = totalMins - breakMins;
+      const effectiveNightMins = Math.round(nightMins * ratio);
+      const effectiveDayMins = Math.max(0, effectiveTotalMins - effectiveNightMins);
+
+      const hourly = Number(job.hourlyWage) || 0;
+      const transport = Number(job.transportFee) || 0;
+      const basePay = (effectiveDayMins / 60) * hourly + (effectiveNightMins / 60) * hourly * 1.25;
+      const pay = Math.round(basePay + transport);
+
+      return {
+        workHours: Number((effectiveTotalMins / 60).toFixed(2)),
+        nightHours: Number((effectiveNightMins / 60).toFixed(2)),
+        breakMins,
+        transport,
+        pay,
+      };
+    };
+
+    const getCategoryNameByColor = (color) => {
+      const found = COLOR_PALETTE.find(c => c.color.toLowerCase() === (color || '').toLowerCase());
       return found ? found.name : 'その他';
-    };
-
-    // 対象年月(YYYY, MM)の翌月振込日(YYYY-MM-DD)を算出（payDay=31なら末日扱い）
-    const getNextMonthPayDate = (workYear, workMonth, payDay) => {
-      const nextMonthIndex = workMonth; // workMonthは1〜12なのでDateの月インデックスとしては翌月になる
-      const targetYear = workYear + Math.floor(nextMonthIndex / 12);
-      const targetMonth = (nextMonthIndex % 12) + 1;
-      const lastDayOfTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
-      const validDay = Math.min(Math.max(1, Number(payDay) || 25), lastDayOfTargetMonth);
-      return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(validDay).padStart(2, '0')}`;
-    };
-
-    const getJapaneseHolidayName = (dateStr) => {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const dt = new Date(y, m - 1, d);
-      const dow = dt.getDay();
-
-      const checkBasicHoliday = (year, month, day) => {
-        const w = new Date(year, month - 1, day).getDay();
-        const nthMonday = Math.floor((day - 1) / 7) + 1;
-
-        if (month === 1 && day === 1) return '元日';
-        if (month === 1 && w === 1 && nthMonday === 2) return '成人の日';
-        if (month === 2 && day === 11) return '建国記念の日';
-        if (month === 2 && day === 23) return '天皇誕生日';
-        const vernal = Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
-        if (month === 3 && day === vernal) return '春分の日';
-        if (month === 4 && day === 29) return '昭和の日';
-        if (month === 5 && day === 3) return '憲法記念日';
-        if (month === 5 && day === 4) return 'みどりの日';
-        if (month === 5 && day === 5) return 'こどもの日';
-        if (month === 7 && w === 1 && nthMonday === 3) return '海の日';
-        if (month === 8 && day === 11) return '山の日';
-        if (month === 9 && w === 1 && nthMonday === 3) return '敬老の日';
-        const autumnal = Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
-        if (month === 9 && day === autumnal) return '秋分の日';
-        if (month === 10 && w === 1 && nthMonday === 2) return 'スポーツの日';
-        if (month === 11 && day === 3) return '文化の日';
-        if (month === 11 && day === 23) return '勤労感謝の日';
-        return null;
-      };
-
-      const direct = checkBasicHoliday(y, m, d);
-      if (direct) return direct;
-
-      if (dow !== 0) {
-        let checkDt = new Date(y, m - 1, d - 1);
-        while (true) {
-          const h = checkBasicHoliday(checkDt.getFullYear(), checkDt.getMonth() + 1, checkDt.getDate());
-          if (!h) break;
-          if (checkDt.getDay() === 0) return '振替休日';
-          checkDt.setDate(checkDt.getDate() - 1);
-        }
-      }
-      return null;
-    };
-
-    const encodeShareData = (obj) => {
-      const json = JSON.stringify(obj);
-      const bytes = new TextEncoder().encode(json);
-      let binString = '';
-      bytes.forEach((b) => { binString += String.fromCharCode(b); });
-      return btoa(binString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    };
-
-    const decodeShareData = (str) => {
-      try {
-        let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64.length % 4) base64 += '=';
-        const binString = atob(base64);
-        const bytes = new Uint8Array(binString.length);
-        for (let i = 0; i < binString.length; i++) bytes[i] = binString.charCodeAt(i);
-        const json = new TextDecoder().decode(bytes);
-        return JSON.parse(json);
-      } catch (e) {
-        return null;
-      }
-    };
-
-    const shiftDateStr = (dateStr, diffDays) => {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const dt = new Date(y, m - 1, d + diffDays);
-      const ny = dt.getFullYear();
-      const nm = String(dt.getMonth() + 1).padStart(2, '0');
-      const nd = String(dt.getDate()).padStart(2, '0');
-      return `${ny}-${nm}-${nd}`;
-    };
-
-    const isEventOnDate = (ev, dateStr) => {
-      const start = ev.date;
-      const end = ev.endDate && ev.endDate >= start ? ev.endDate : start;
-      return dateStr >= start && dateStr <= end;
-    };
-
-    const checkDuplicateEvent = (candidate, existingEvents) => {
-      const cleanCandTitle = (candidate.title || '').replace(/^\[.*?\]\s*/, '').trim().toLowerCase();
-      return existingEvents.find(ev => {
-        if (!ev.isExpense || ev.amount !== candidate.amount) return false;
-        const sameDate = ev.date === candidate.date;
-        const cleanEvTitle = (ev.title || '').replace(/^\[.*?\]\s*/, '').trim().toLowerCase();
-        const similarTitle = cleanCandTitle && cleanEvTitle && (cleanEvTitle.includes(cleanCandTitle) || cleanCandTitle.includes(cleanEvTitle));
-        return sameDate && (similarTitle || ev.amount === candidate.amount);
-      });
-    };
-
-    const parseStatementText = (rawText, defaultDateStr, existingEvents = []) => {
-      const text = rawText.trim();
-      if (!text) return [];
-      const rawResults = [];
-      const defaultYear = Number(defaultDateStr.split('-')[0]);
-
-      const normalizeDate = (rawDate) => {
-        if (!rawDate) return defaultDateStr;
-        const cleaned = rawDate.replace(/[年月]/g, '-').replace(/日/g, '').replace(/\//g, '-').trim();
-        const parts = cleaned.split('-').map(p => p.trim()).filter(Boolean);
-        if (parts.length === 3) {
-          const y = parts[0].length === 2 ? `20${parts[0]}` : parts[0];
-          return `${y}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
-        }
-        if (parts.length === 2) {
-          return `${defaultYear}-${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}`;
-        }
-        return defaultDateStr;
-      };
-
-      const mailDateMatch = text.match(/(?:利用日|ご利用日|利用日時|日時)[：:\s]*(\d{4}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?|\d{1,2}[\/\-月]\d{1,2}日?)/);
-      const mailAmountMatch = text.match(/(?:利用金額|ご利用金額|お支払い金額|決済金額|金額)[：:\s]*[¥￥]?\s*([0-9,]+)\s*円?/);
-      const mailMerchantMatch = text.match(/(?:利用先|ご利用先|利用店名|ご利用店名|加盟店|店舗名)[：:\s]*([^\r\n]+)/);
-
-      if (mailAmountMatch && (mailDateMatch || mailMerchantMatch)) {
-        const amount = Number(mailAmountMatch[1].replace(/,/g, ''));
-        if (amount > 0) {
-          const date = normalizeDate(mailDateMatch ? mailDateMatch[1] : null);
-          const merchant = mailMerchantMatch ? mailMerchantMatch[1].trim() : 'カード利用';
-          rawResults.push({
-            id: `stmt_${Date.now()}_0`,
-            date,
-            title: merchant,
-            amount
-          });
-        }
-      } else {
-        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        lines.forEach((line, idx) => {
-          if (/^(利用日|日付|年月日|合計|小計)/.test(line)) return;
-
-          const cols = line.includes(',')
-            ? line.split(',').map(c => c.replace(/^["']|["']$/g, '').trim())
-            : line.split(/\s+/);
-
-          let foundDate = null;
-          let foundAmount = null;
-          const textCandidates = [];
-
-          cols.forEach(col => {
-            if (!foundDate && /^(\d{2,4}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?|\d{1,2}[\/\-月]\d{1,2}日?)$/.test(col)) {
-              foundDate = normalizeDate(col);
-              return;
-            }
-            const cleanNum = col.replace(/[¥￥円,、\s]/g, '');
-            if (foundAmount === null && /^-?\d+$/.test(cleanNum)) {
-              const num = Math.abs(Number(cleanNum));
-              if (num > 0 && num < 10000000) {
-                foundAmount = num;
-                return;
-              }
-            }
-            if (col && !/^(1回|一括|ﾘﾎﾞ|分割|本人|家族)$/.test(col)) {
-              textCandidates.push(col);
-            }
-          });
-
-          if (!foundAmount) {
-            const inlineAmt = line.match(/([0-9,]+)\s*円/);
-            if (inlineAmt) foundAmount = Number(inlineAmt[1].replace(/,/g, ''));
-          }
-          if (!foundDate) {
-            const inlineDt = line.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}[\/\-]\d{1,2})/);
-            if (inlineDt) foundDate = normalizeDate(inlineDt[1]);
-          }
-
-          if (foundAmount && foundAmount > 0) {
-            const title = textCandidates.join(' ').trim() || '明細利用';
-            rawResults.push({
-              id: `stmt_${Date.now()}_${idx}`,
-              date: foundDate || defaultDateStr,
-              title,
-              amount: foundAmount
-            });
-          }
-        });
-      }
-
-      const seenInBatch = [];
-      return rawResults.map(item => {
-        const dupInHistory = checkDuplicateEvent(item, existingEvents);
-        const dupInBatch = seenInBatch.find(b => b.date === item.date && b.amount === item.amount && b.title === item.title);
-        seenInBatch.push(item);
-
-        const isDuplicate = Boolean(dupInHistory || dupInBatch);
-        const duplicateReason = dupInHistory
-          ? `登録済「${dupInHistory.title}」と重複の可能性`
-          : dupInBatch
-          ? '貼り付けデータ内で重複'
-          : '';
-
-        return {
-          ...item,
-          isDuplicate,
-          duplicateReason,
-          selected: !isDuplicate
-        };
-      });
-    };
-
-    const downloadICS = (ev) => {
-      const startClean = ev.date.replace(/-/g, '');
-      const endClean = (ev.endDate || ev.date).replace(/-/g, '');
-      let dtStartLine = '';
-      let dtEndLine = '';
-
-      if (ev.isAllDay) {
-        const nextDayAfterEnd = shiftDateStr(ev.endDate || ev.date, 1).replace(/-/g, '');
-        dtStartLine = `DTSTART;VALUE=DATE:${startClean}`;
-        dtEndLine = `DTEND;VALUE=DATE:${nextDayAfterEnd}`;
-      } else {
-        const sTime = (ev.startTime || '09:00').replace(':', '') + '00';
-        const eTime = (ev.endTime || '10:00').replace(':', '') + '00';
-        dtStartLine = `DTSTART:${startClean}T${sTime}`;
-        dtEndLine = `DTEND:${endClean}T${eTime}`;
-      }
-
-      const descParts = [];
-      if (ev.amount > 0) descParts.push(`金額: ${ev.isExpense ? '-' : '+'}${ev.amount.toLocaleString()}円`);
-      if (ev.memo) descParts.push(ev.memo);
-      const desc = descParts.join(' / ');
-      const crlf = String.fromCharCode(13, 10);
-
-      const icsContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//ScheduleKakeibo//JP',
-        'BEGIN:VEVENT',
-        `UID:${ev.id}@schedule-kakeibo`,
-        `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-        dtStartLine,
-        dtEndLine,
-        `SUMMARY:${ev.title}`,
-        `DESCRIPTION:${desc}`,
-        'END:VEVENT',
-        'END:VCALENDAR'
-      ].join(crlf);
-
-      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${ev.title}.ics`;
-      a.click();
-      URL.revokeObjectURL(url);
     };
 
     function CategoryDonutChart({ breakdown, totalExpense }) {
       if (totalExpense <= 0 || breakdown.length === 0) {
-        return (
-          <div className="text-center py-6 text-xs text-slate-400 bg-stone-50 rounded-xl border border-stone-200/60">
-            当月の支出データが登録されるとカテゴリ別グラフが表示されます
-          </div>
-        );
+        return <div className="text-center py-6 text-xs text-slate-400">今月の支出データはまだありません</div>;
       }
-
-      const size = 132;
-      const strokeWidth = 22;
-      const radius = (size - strokeWidth) / 2;
-      const circumference = 2 * Math.PI * radius;
       let cumulativePercent = 0;
+      const gradientParts = breakdown.map(item => {
+        const start = cumulativePercent;
+        const pct = (item.amount / totalExpense) * 100;
+        cumulativePercent += pct;
+        return `${item.color} ${start.toFixed(1)}% ${cumulativePercent.toFixed(1)}%`;
+      });
 
       return (
         <div className="flex items-center space-x-4 pt-1">
-          <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="transparent"
-                stroke="#F5F5F4"
-                strokeWidth={strokeWidth}
-              />
-              {breakdown.map((item) => {
-                const percent = item.amount / totalExpense;
-                const dashLength = percent * circumference;
-                const dashOffset = -cumulativePercent * circumference;
-                cumulativePercent += percent;
-                return (
-                  <circle
-                    key={item.name}
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    fill="transparent"
-                    stroke={item.color}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={`${dashLength} ${circumference}`}
-                    strokeDashoffset={dashOffset}
-                    strokeLinecap="butt"
-                  />
-                );
-              })}
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-              <span className="text-[9px] text-slate-400 font-bold">支出合計</span>
-              <span className="text-xs font-bold text-slate-800">{totalExpense.toLocaleString()}円</span>
+          <div
+            className="w-24 h-24 rounded-full flex items-center justify-center shrink-0 relative shadow-inner"
+            style={{ background: `conic-gradient(${gradientParts.join(', ')})` }}
+          >
+            <div className="w-14 h-14 bg-white rounded-full flex flex-col items-center justify-center">
+              <span className="text-[9px] text-slate-400">支出合計</span>
+              <span className="text-[11px] font-bold text-slate-800">{Math.round(totalExpense / 1000)}k</span>
             </div>
           </div>
-
-          <div className="flex-1 space-y-2">
+          <div className="flex-1 space-y-1.5 text-xs">
             {breakdown.map(item => (
-              <div key={item.name} className="space-y-0.5">
-                <div className="flex justify-between items-center text-[11px]">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="font-bold text-slate-700 truncate max-w-[90px]">{item.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-slate-800">{item.amount.toLocaleString()}円</span>
-                    <span className="text-[9px] text-slate-400 ml-1">({item.percent}%)</span>
-                  </div>
+              <div key={item.name} className="flex justify-between items-center">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-slate-700 font-medium truncate max-w-[95px]">{item.name}</span>
                 </div>
-                <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{ width: `${item.percent}%`, backgroundColor: item.color }}
-                  />
+                <div className="text-right">
+                  <span className="font-bold text-slate-800">{item.amount.toLocaleString()}円</span>
+                  <span className="text-[10px] text-slate-400 ml-1">({Math.round((item.amount / totalExpense) * 100)}%)</span>
                 </div>
               </div>
             ))}
@@ -418,885 +198,1038 @@
     }
 
     function App() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const [currentDate, setCurrentDate] = useState(new Date());
+      const todayStr = formatDateStr(new Date());
+
       const [viewMode, setViewMode] = useState('month');
+      const [currentDate, setCurrentDate] = useState(() => new Date());
       const [selectedDate, setSelectedDate] = useState(todayStr);
+      const [slideAnimClass, setSlideAnimClass] = useState('');
+      const [slideKey, setSlideKey] = useState(0);
+      const [highlightBudgetCard, setHighlightBudgetCard] = useState(false);
+
+      const [events, setEvents] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('cal_events_v3')) || []; } catch { return []; }
+      });
+      const [jobs, setJobs] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('cal_jobs_v3')) || []; } catch { return []; }
+      });
+      const [monthlyBudget, setMonthlyBudget] = useState(() => {
+        return Number(localStorage.getItem('cal_budget_v3')) || 50000;
+      });
+      const [baseBalance, setBaseBalance] = useState(() => {
+        return Number(localStorage.getItem('cal_base_balance_v3')) || 0;
+      });
+      const [templates, setTemplates] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem('cal_templates_v3')) || [
+            { id: 'tpl1', title: 'ランチ・学食', amount: 650, color: '#C28540', isExpense: true },
+            { id: 'tpl2', title: 'コンビニ・カフェ', amount: 400, color: '#C28540', isExpense: true },
+            { id: 'tpl3', title: '電車・バス代', amount: 440, color: '#3B6E8C', isExpense: true },
+          ];
+        } catch { return []; }
+      });
+
+      // 生理周期オプション状態
+      const [cycleConfig, setCycleConfig] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem('cal_cycle_cfg_v3')) || {
+            enabled: false,
+            avgCycleDays: 28,
+            avgPeriodDays: 5,
+          };
+        } catch {
+          return { enabled: false, avgCycleDays: 28, avgPeriodDays: 5 };
+        }
+      });
+      const [cycleLogs, setCycleLogs] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('cal_cycle_logs_v3')) || []; } catch { return []; }
+      });
+      const [cycleNoteInput, setCycleNoteInput] = useState('');
+
+      // 通知権限と発火済み記録
+      const [notifPermission, setNotifPermission] = useState(() => {
+        return typeof Notification !== 'undefined' ? Notification.permission : 'denied';
+      });
+      const notifiedIdsRef = useRef(new Set());
+
+      // モーダル・UI状態
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [modalTab, setModalTab] = useState('schedule'); // 'schedule' | 'finance' | 'shift'
+      const [editingId, setEditingId] = useState(null);
+      const [repeatOption, setRepeatOption] = useState('none');
+      const [showScheduleAmount, setShowScheduleAmount] = useState(false);
+      const [showSubItemsPanel, setShowSubItemsPanel] = useState(false);
+
+      const [newEvent, setNewEvent] = useState({
+        title: '',
+        date: todayStr,
+        endDate: todayStr,
+        isAllDay: false,
+        startTime: '10:00',
+        endTime: '12:00',
+        color: '#3E7B67',
+        amount: 0,
+        isExpense: true,
+        isShift: false,
+        jobId: '',
+        memo: '',
+        subItems: [],
+        reminder: 'none',
+      });
+      const [subItemInput, setSubItemInput] = useState({ name: '', price: '' });
+
+      // 勤務先追加フォーム
+      const [newJob, setNewJob] = useState({
+        name: '',
+        hourlyWage: 1200,
+        transportFee: 0,
+        payDay: 25,
+        autoBreak: true,
+        nightBonus: true,
+        color: '#2E7D5B',
+      });
+
+      // 定型文追加フォーム
+      const [newTemplate, setNewTemplate] = useState({
+        title: '',
+        amount: 0,
+        color: '#C28540',
+        isExpense: true,
+      });
+      const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+
+      // 収支フィルター & 検索
       const [financeFilter, setFinanceFilter] = useState('all');
       const [searchQuery, setSearchQuery] = useState('');
 
-      const touchStartX = useRef(null);
-      const touchStartY = useRef(null);
+      // 明細貼付モーダル
+      const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+      const [statementRawText, setStatementRawText] = useState('');
+      const [statementMethodLabel, setStatementMethodLabel] = useState('クレカ');
+      const [parsedStatements, setParsedStatements] = useState([]);
 
-      const [deferredPrompt, setDeferredPrompt] = useState(null);
-      const [isStandalone, setIsStandalone] = useState(false);
-
+      // 共有リンク作成＆取り込み
+      const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+      const [shareOptions, setShareOptions] = useState({ scope: 'month', hideMoney: true, hideMemo: true, maskTitle: false });
+      const [generatedShareUrl, setGeneratedShareUrl] = useState('');
       const [sharedEvents, setSharedEvents] = useState(null);
+      const [isViewingShared, setIsViewingShared] = useState(false);
       const [isImportModalOpen, setIsImportModalOpen] = useState(false);
       const [selectedImportIds, setSelectedImportIds] = useState([]);
       const [importCustomColor, setImportCustomColor] = useState('#3E7B67');
       const [importBadgeLabel, setImportBadgeLabel] = useState('共有');
       const [importIncludeMoney, setImportIncludeMoney] = useState(false);
 
-      const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
-      const [statementRawText, setStatementRawText] = useState('');
-      const [parsedStatements, setParsedStatements] = useState([]);
-      const [statementMethodLabel, setStatementMethodLabel] = useState('クレカ');
+      // バックアップ & PWA
+      const [backupText, setBackupText] = useState('');
+      const [deferredPrompt, setDeferredPrompt] = useState(null);
+      const [isStandalone, setIsStandalone] = useState(false);
+      const [toastMsg, setToastMsg] = useState('');
 
-      const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
-      const [toastMessage, setToastMessage] = useState('');
-
-      const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-      const [shareOptions, setShareOptions] = useState({
-        scope: 'month',
-        hideMoney: true,
-        hideMemo: true,
-        maskTitle: false
-      });
-      const [generatedShareUrl, setGeneratedShareUrl] = useState('');
-
-      const [baseBalance, setBaseBalance] = useState(() => {
-        const saved = localStorage.getItem('app_base_balance');
-        return saved !== null ? Number(saved) : 0;
-      });
-
-      const [monthlyBudget, setMonthlyBudget] = useState(() => {
-        const saved = localStorage.getItem('app_monthly_budget');
-        return saved !== null ? Number(saved) : 50000;
-      });
-
-      const [templates, setTemplates] = useState(() => {
-        const saved = localStorage.getItem('app_templates_v1');
-        return saved ? JSON.parse(saved) : DEFAULT_TEMPLATES;
-      });
-
-      const [newTemplate, setNewTemplate] = useState({
-        title: '', amount: 500, isExpense: true, color: '#C28540', memo: ''
-      });
-
-      const [jobs, setJobs] = useState(() => {
-        const saved = localStorage.getItem('app_jobs_v4');
-        return saved ? JSON.parse(saved) : [];
-      });
-
-      const [myEvents, setMyEvents] = useState(() => {
-        const saved = localStorage.getItem('app_events_v4');
-        return saved ? JSON.parse(saved) : [];
-      });
-
-      const [isModalOpen, setIsModalOpen] = useState(false);
-      const [editingId, setEditingId] = useState(null);
-      const [subItemInput, setSubItemInput] = useState({ name: '', price: '' });
-      const [repeatOption, setRepeatOption] = useState('none');
-      
-      const [newEvent, setNewEvent] = useState({
-        title: '', date: todayStr, endDate: todayStr, isAllDay: false,
-        startTime: '09:00', endTime: '17:00', color: '#476C9B',
-        amount: 0, isExpense: true, isShift: false, jobId: '',
-        subItems: [], memo: '', completed: false
-      });
+      // スワイプ検知用
+      const touchStartRef = useRef({ x: 0, y: 0 });
 
       const showToast = (msg) => {
-        setToastMessage(msg);
-        setTimeout(() => {
-          setToastMessage(prev => (prev === msg ? '' : prev));
-        }, 4000);
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(''), 2800);
       };
 
-      useEffect(() => {
-        const standaloneCheck = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        setIsStandalone(standaloneCheck);
+      // LocalStorage保存
+      useEffect(() => { localStorage.setItem('cal_events_v3', JSON.stringify(events)); }, [events]);
+      useEffect(() => { localStorage.setItem('cal_jobs_v3', JSON.stringify(jobs)); }, [jobs]);
+      useEffect(() => { localStorage.setItem('cal_budget_v3', String(monthlyBudget)); }, [monthlyBudget]);
+      useEffect(() => { localStorage.setItem('cal_base_balance_v3', String(baseBalance)); }, [baseBalance]);
+      useEffect(() => { localStorage.setItem('cal_templates_v3', JSON.stringify(templates)); }, [templates]);
+      useEffect(() => { localStorage.setItem('cal_cycle_cfg_v3', JSON.stringify(cycleConfig)); }, [cycleConfig]);
+      useEffect(() => { localStorage.setItem('cal_cycle_logs_v3', JSON.stringify(cycleLogs)); }, [cycleLogs]);
 
+      // PWA検出 & URLパラメータ解析（共有URL / iPhoneショートカット）
+      useEffect(() => {
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+          setIsStandalone(true);
+        }
         const handleBeforeInstall = (e) => {
           e.preventDefault();
           setDeferredPrompt(e);
         };
         window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+        const params = new URLSearchParams(window.location.search);
+        const shareData = params.get('share');
+        if (shareData) {
+          try {
+            const decoded = JSON.parse(decodeURIComponent(escape(atob(shareData))));
+            if (Array.isArray(decoded)) {
+              setSharedEvents(decoded);
+              setSelectedImportIds(decoded.map(item => item.id));
+              setIsViewingShared(true);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
+        const addExp = params.get('add_expense');
+        if (addExp) {
+          const amt = Number(addExp) || 0;
+          const ttl = params.get('title') || 'クイック支出';
+          const method = params.get('method');
+          const fullTitle = method ? `[${method}] ${ttl}` : ttl;
+          if (amt > 0) {
+            const ev = {
+              id: 'sc_' + Date.now(),
+              title: fullTitle,
+              date: todayStr,
+              endDate: todayStr,
+              isAllDay: true,
+              startTime: '',
+              endTime: '',
+              color: '#C28540',
+              amount: amt,
+              isExpense: true,
+              isShift: false,
+              completed: true,
+              memo: 'ショートカット自動記録',
+              subItems: [],
+              reminder: 'none',
+            };
+            setEvents(prev => [ev, ...prev]);
+            showToast(`「${fullTitle}」(${amt.toLocaleString()}円)を記録しました`);
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }
+
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       }, []);
 
-      const handleInstallPWA = async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          setDeferredPrompt(null);
-          showToast('ホーム画面にアプリを追加しました！');
-        }
-      };
-
+      // リマインド通知の定期チェック（30秒ごと）
       useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
+        const checkReminders = () => {
+          if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+          const now = new Date();
+          events.forEach(ev => {
+            if (!ev.reminder || ev.reminder === 'none' || ev.completed) return;
+            const key = `${ev.id}_${ev.date}_${ev.startTime}_${ev.reminder}`;
+            if (notifiedIdsRef.current.has(key)) return;
 
-        const shareParam = params.get('s');
-        if (shareParam) {
-          const decoded = decodeShareData(shareParam);
-          if (decoded && Array.isArray(decoded.events)) {
-            setSharedEvents(decoded.events);
-            setSelectedImportIds(decoded.events.map(ev => ev.id));
-            if (decoded.targetDate) {
-              setCurrentDate(new Date(decoded.targetDate));
-              setSelectedDate(decoded.targetDate);
+            const [y, m, d] = ev.date.split('-').map(Number);
+            const [hh, mm] = (ev.isAllDay || !ev.startTime ? '09:00' : ev.startTime).split(':').map(Number);
+            const targetTime = new Date(y, m - 1, d, hh, mm, 0);
+            const remindAt = new Date(targetTime.getTime() - Number(ev.reminder) * 60 * 1000);
+            const diffMs = now.getTime() - remindAt.getTime();
+
+            if (diffMs >= 0 && diffMs < 60 * 1000) {
+              notifiedIdsRef.current.add(key);
+              new Notification(`リマインド: ${ev.title}`, {
+                body: `${ev.date} ${ev.isAllDay ? '終日' : ev.startTime} の予定です`,
+              });
             }
-          }
+          });
+        };
+
+        checkReminders();
+        const timer = setInterval(checkReminders, 30000);
+        return () => clearInterval(timer);
+      }, [events]);
+
+      const requestNotificationPermission = async () => {
+        if (typeof Notification === 'undefined') {
+          showToast('このブラウザは通知に対応していません');
           return;
         }
-
-        const addExpenseParam = params.get('add_expense') || params.get('amount');
-        const titleParam = params.get('title') || params.get('merchant');
-        const dateParam = params.get('date') || todayStr;
-        const methodParam = params.get('method') || '';
-        const autoSaveParam = params.get('auto');
-
-        if (addExpenseParam !== null || titleParam !== null) {
-          const cleanAmount = addExpenseParam ? Math.abs(Number(String(addExpenseParam).replace(/[^0-9.-]/g, ''))) : 0;
-          const cleanTitle = titleParam ? titleParam.trim() : (methodParam ? `${methodParam}決済` : 'タッチ決済');
-          const fullTitle = methodParam && titleParam && !titleParam.includes(methodParam)
-            ? `[${methodParam}] ${cleanTitle}`
-            : cleanTitle;
-
-          if (autoSaveParam === '1' && cleanAmount > 0) {
-            const nowTime = new Date().toTimeString().slice(0, 5);
-            const autoItem = {
-              id: `sc_${Date.now()}`,
-              title: fullTitle,
-              date: dateParam,
-              endDate: dateParam,
-              isAllDay: true,
-              startTime: nowTime,
-              endTime: nowTime,
-              color: '#C28540',
-              amount: cleanAmount,
-              isExpense: true,
-              isShift: false,
-              jobId: '',
-              subItems: [],
-              memo: methodParam ? `決済手段: ${methodParam}（ショートカット自動記録）` : 'ショートカット自動記録',
-              completed: true
-            };
-            setMyEvents(prev => [...prev, autoItem]);
-            setSelectedDate(dateParam);
-            setViewMode('day');
-            showToast(`⚡ 自動記録: ${fullTitle} (-${cleanAmount.toLocaleString()}円)`);
-          } else {
-            setEditingId(null);
-            setRepeatOption('none');
-            setSelectedDate(dateParam);
-            setNewEvent({
-              title: fullTitle,
-              date: dateParam,
-              endDate: dateParam,
-              isAllDay: true,
-              startTime: '09:00',
-              endTime: '10:00',
-              color: '#C28540',
-              amount: cleanAmount,
-              isExpense: true,
-              isShift: false,
-              jobId: '',
-              subItems: [],
-              memo: methodParam ? `決済手段: ${methodParam}` : '',
-              completed: true
-            });
-            setIsModalOpen(true);
-          }
-
-          window.history.replaceState({}, document.title, window.location.pathname);
+        const res = await Notification.requestPermission();
+        setNotifPermission(res);
+        if (res === 'granted') {
+          showToast('リマインド通知を許可しました');
+        } else {
+          showToast('通知がブロックされています。ブラウザ設定をご確認ください');
         }
-      }, []);
-
-      const isViewingShared = sharedEvents !== null;
-
-      // バイトの翌月給料日イベントを自動生成（勤務先別・稼いだ年月別に集計）
-      const autoPaydayEvents = useMemo(() => {
-        if (isViewingShared) return [];
-        const grouped = {};
-        myEvents.forEach(ev => {
-          if (!ev.isShift || ev.amount <= 0) return;
-          const jobId = ev.shiftMeta?.jobId || ev.jobId || 'unknown';
-          const job = jobs.find(j => j.id === jobId);
-          const payDay = job?.payDay || 25;
-          const jobName = job?.name || ev.shiftMeta?.jobName || ev.title || 'バイト';
-          const jobColor = job?.color || ev.color || '#4A8B71';
-
-          const [wy, wm] = ev.date.split('-').map(Number);
-          const paydayStr = getNextMonthPayDate(wy, wm, payDay);
-          const key = `${jobId}_${wy}_${wm}`;
-
-          if (!grouped[key]) {
-            grouped[key] = {
-              id: `auto_payday_${key}`,
-              title: `💰 ${jobName} 給料日`,
-              date: paydayStr,
-              endDate: paydayStr,
-              isAllDay: true,
-              startTime: '09:00',
-              endTime: '09:00',
-              color: jobColor,
-              amount: 0,
-              isExpense: false,
-              isShift: false,
-              isAutoPayday: true,
-              completed: paydayStr <= todayStr,
-              memo: `${wy}年${wm}月分の勤務給与振込（自動計算）`,
-              shiftCount: 0,
-              totalHours: 0
-            };
-          }
-          grouped[key].amount += Number(ev.amount);
-          grouped[key].shiftCount += 1;
-          grouped[key].totalHours = Math.round((grouped[key].totalHours + (ev.shiftMeta?.workHours || 0)) * 10) / 10;
-          grouped[key].memo = `${wy}年${wm}月分（${grouped[key].shiftCount}回 / 実働${grouped[key].totalHours}h）の振込予定`;
-        });
-        return Object.values(grouped);
-      }, [myEvents, jobs, isViewingShared, todayStr]);
-
-      // 画面表示用の統合イベント（手動予定 ＋ 自動生成された翌月給料日）
-      const events = useMemo(() => {
-        if (isViewingShared) return sharedEvents;
-        return [...myEvents, ...autoPaydayEvents];
-      }, [isViewingShared, sharedEvents, myEvents, autoPaydayEvents]);
-
-      const setEvents = (updater) => {
-        if (isViewingShared) return;
-        setMyEvents(updater);
       };
 
-      const [newJob, setNewJob] = useState({
-        name: '', hourlyWage: 1100, transportFee: 0, payDay: 25, autoBreak: true, nightBonus: true, color: '#4A8B71'
-      });
-      const [backupText, setBackupText] = useState('');
+      const downloadICS = (ev) => {
+        const dtStr = ev.date.replace(/-/g, '');
+        const startT = (ev.startTime || '09:00').replace(':', '') + '00';
+        const endT = (ev.endTime || '10:00').replace(':', '') + '00';
+        const dtStart = ev.isAllDay ? `DTSTART;VALUE=DATE:${dtStr}` : `DTSTART:${dtStr}T${startT}`;
+        const dtEnd = ev.isAllDay ? `DTEND;VALUE=DATE:${dtStr}` : `DTEND:${dtStr}T${endT}`;
+        const triggerMins = ev.reminder && ev.reminder !== 'none' ? Number(ev.reminder) : 15;
 
-      useEffect(() => { localStorage.setItem('app_base_balance', String(baseBalance)); }, [baseBalance]);
-      useEffect(() => { localStorage.setItem('app_monthly_budget', String(monthlyBudget)); }, [monthlyBudget]);
-      useEffect(() => { localStorage.setItem('app_templates_v1', JSON.stringify(templates)); }, [templates]);
-      useEffect(() => { localStorage.setItem('app_jobs_v4', JSON.stringify(jobs)); }, [jobs]);
-      useEffect(() => { localStorage.setItem('app_events_v4', JSON.stringify(myEvents)); }, [myEvents]);
+        const icsContent = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//SmartScheduleBudget//JP',
+          'BEGIN:VEVENT',
+          `UID:${ev.id}@smartcal`,
+          dtStart,
+          dtEnd,
+          `SUMMARY:${ev.title}`,
+          `DESCRIPTION:${(ev.memo || '').replace(/\n/g, ' ')}`,
+          'BEGIN:VALARM',
+          'ACTION:DISPLAY',
+          'DESCRIPTION:Reminder',
+          `TRIGGER:-PT${triggerMins}M`,
+          'END:VALARM',
+          'END:VEVENT',
+          'END:VCALENDAR',
+        ].join('\r\n');
+
+        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${ev.title}.ics`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('標準カレンダー用(.ics)を出力しました');
+      };
+
+      // 月・日のスライド付き移動
+      const triggerSlide = (direction) => {
+        setSlideAnimClass(direction === 'next' ? 'animate-slide-next' : 'animate-slide-prev');
+        setSlideKey(prev => prev + 1);
+      };
+
+      const changeMonth = (delta) => {
+        triggerSlide(delta > 0 ? 'next' : 'prev');
+        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+      };
+
+      const changeSelectedDay = (delta) => {
+        triggerSlide(delta > 0 ? 'next' : 'prev');
+        const nextStr = addDaysStr(selectedDate, delta);
+        setSelectedDate(nextStr);
+        const [y, m] = nextStr.split('-').map(Number);
+        setCurrentDate(new Date(y, m - 1, 1));
+      };
 
       const handleTouchStart = (e) => {
-        touchStartX.current = e.touches[0].clientX;
-        touchStartY.current = e.touches[0].clientY;
+        if (e.touches && e.touches.length === 1) {
+          touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
       };
 
       const handleTouchEnd = (e) => {
-        if (touchStartX.current === null || touchStartY.current === null) return;
-        const diffX = e.changedTouches[0].clientX - touchStartX.current;
-        const diffY = e.changedTouches[0].clientY - touchStartY.current;
-        touchStartX.current = null;
-        touchStartY.current = null;
-
-        if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+        if (!e.changedTouches || e.changedTouches.length === 0) return;
+        const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+        const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
           if (viewMode === 'month') {
-            const y = currentDate.getFullYear();
-            const m = currentDate.getMonth();
-            setCurrentDate(new Date(y, diffX < 0 ? m + 1 : m - 1, 1));
+            changeMonth(dx < 0 ? 1 : -1);
           } else if (viewMode === 'day') {
-            handleMoveDay(diffX < 0 ? 1 : -1);
+            changeSelectedDay(dx < 0 ? 1 : -1);
           }
         }
       };
 
-      const handleMoveDay = (diff) => {
-        const nextStr = shiftDateStr(selectedDate, diff);
-        setSelectedDate(nextStr);
-        const [ny, nm] = nextStr.split('-').map(Number);
-        if (ny !== currentDate.getFullYear() || nm !== currentDate.getMonth() + 1) {
-          setCurrentDate(new Date(ny, nm - 1, 1));
-        }
+      // TOPの「使える金額」タップ時の遷移
+      const jumpToBudgetSettings = () => {
+        setViewMode('settings');
+        setHighlightBudgetCard(true);
+        setTimeout(() => {
+          const el = document.getElementById('budget-settings-card');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+        setTimeout(() => setHighlightBudgetCard(false), 2200);
       };
 
-      const handleQuickTemplateRegister = (tpl) => {
-        if (isViewingShared) return;
-        const targetDate = viewMode === 'day' ? selectedDate : todayStr;
-        const created = {
-          id: `tpl_ev_${Date.now()}`,
-          title: tpl.title,
-          date: targetDate,
-          endDate: targetDate,
-          isAllDay: true,
-          startTime: '09:00',
-          endTime: '10:00',
-          color: tpl.color || '#C28540',
-          amount: Number(tpl.amount) || 0,
-          isExpense: tpl.isExpense !== false,
-          isShift: false,
-          jobId: '',
-          subItems: [],
-          memo: tpl.memo || '',
-          completed: true
-        };
-        setMyEvents([...myEvents, created]);
-        setIsQuickMenuOpen(false);
-        showToast(`⚡ 登録完了: ${tpl.title} (${tpl.isExpense !== false ? '-' : '+'}${Number(tpl.amount).toLocaleString()}円)`);
-      };
-
-      const applyTemplateToForm = (tpl) => {
-        setNewEvent({
-          ...newEvent,
-          title: tpl.title,
-          amount: Number(tpl.amount) || 0,
-          isExpense: tpl.isExpense !== false,
-          color: tpl.color || '#C28540',
-          isShift: false,
-          isAllDay: true,
-          memo: tpl.memo || ''
-        });
-      };
-
-      const addTemplate = () => {
-        if (!newTemplate.title.trim()) return;
-        setTemplates([...templates, { ...newTemplate, id: `tpl_${Date.now()}` }]);
-        setNewTemplate({ title: '', amount: 500, isExpense: true, color: '#C28540', memo: '' });
-      };
-
-      const deleteTemplate = (id) => {
-        setTemplates(templates.filter(t => t.id !== id));
-      };
-
-      const openCreateModal = () => {
-        setEditingId(null);
-        setRepeatOption('none');
-        setSubItemInput({ name: '', price: '' });
-        setNewEvent({
-          title: '', date: selectedDate, endDate: selectedDate, isAllDay: false,
-          startTime: '09:00', endTime: '17:00', color: '#476C9B',
-          amount: 0, isExpense: true, isShift: false, jobId: '',
-          subItems: [], memo: '', completed: false
-        });
-        setIsModalOpen(true);
-      };
-
-      const openEditModal = (ev) => {
-        if (isViewingShared || ev.isAutoPayday) return;
-        setEditingId(ev.id);
-        setRepeatOption('none');
-        setSubItemInput({ name: '', price: '' });
-        setNewEvent({
-          ...ev,
-          endDate: ev.endDate || ev.date,
-          isAllDay: !!ev.isAllDay,
-          subItems: ev.subItems || [],
-          jobId: ev.shiftMeta?.jobId || ev.jobId || ''
-        });
-        setIsModalOpen(true);
-      };
-
-      const calculateShiftDetails = (startTime, endTime, job) => {
-        if (!startTime || !endTime || !job) return { pay: 0, workHours: 0, nightHours: 0, breakMins: 0, transport: 0 };
-        const [startH, startM] = startTime.split(':').map(Number);
-        const [endH, endM] = endTime.split(':').map(Number);
-        let startMins = startH * 60 + startM;
-        let endMins = endH * 60 + endM;
-        if (endMins <= startMins) endMins += 24 * 60;
-
-        const totalMins = endMins - startMins;
-        const totalHours = totalMins / 60;
-
-        let nightMins = 0;
-        if (job.nightBonus) {
-          const overlap = (a1, a2, b1, b2) => Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
-          nightMins += overlap(startMins, endMins, 0, 5 * 60);
-          nightMins += overlap(startMins, endMins, 22 * 60, 29 * 60);
-        }
-
-        let breakMins = 0;
-        if (job.autoBreak) {
-          if (totalHours > 8) breakMins = 60;
-          else if (totalHours > 6) breakMins = 45;
-        }
-
-        const effectiveTotalMins = Math.max(0, totalMins - breakMins);
-        const effectiveNightMins = Math.min(nightMins, effectiveTotalMins);
-        const effectiveNormalMins = effectiveTotalMins - effectiveNightMins;
-
-        const normalPay = (effectiveNormalMins / 60) * job.hourlyWage;
-        const nightPay = (effectiveNightMins / 60) * job.hourlyWage * 1.25;
-        const wagePay = Math.round(normalPay + nightPay);
-        const transport = Number(job.transportFee || 0);
-
-        return {
-          pay: wagePay + transport,
-          wagePay,
-          workHours: Math.round((effectiveTotalMins / 60) * 100) / 100,
-          nightHours: Math.round((effectiveNightMins / 60) * 100) / 100,
-          breakMins,
-          transport
-        };
-      };
-
-      const handleAddSubItem = () => {
-        if (!subItemInput.name || !subItemInput.price) return;
-        const updatedSub = [...newEvent.subItems, { id: Date.now(), name: subItemInput.name, price: Number(subItemInput.price) }];
-        const sum = updatedSub.reduce((acc, item) => acc + item.price, 0);
-        setNewEvent({ ...newEvent, subItems: updatedSub, amount: sum });
-        setSubItemInput({ name: '', price: '' });
-      };
-
-      const handleRemoveSubItem = (id) => {
-        const updatedSub = newEvent.subItems.filter(item => item.id !== id);
-        const sum = updatedSub.reduce((acc, item) => acc + item.price, 0);
-        setNewEvent({ ...newEvent, subItems: updatedSub, amount: sum });
-      };
-
-      const handleSaveEvent = (e) => {
-        e.preventDefault();
-        let calculatedAmount = Number(newEvent.amount);
-        let title = newEvent.title;
-        let isExpense = newEvent.isExpense;
-        let color = newEvent.color;
-        let shiftMeta = null;
-
-        const validEndDate = newEvent.endDate && newEvent.endDate >= newEvent.date ? newEvent.endDate : newEvent.date;
-
-        if (newEvent.isShift) {
-          const selectedJob = jobs.find(j => j.id === newEvent.jobId);
-          if (!selectedJob) {
-            alert('勤務先を選択してください。未登録の場合は設定タブから追加できます。');
-            return;
-          }
-          const details = calculateShiftDetails(newEvent.startTime, newEvent.endTime, selectedJob);
-          calculatedAmount = details.pay;
-          if (!title) title = `${selectedJob.name}`;
-          isExpense = false;
-          color = selectedJob.color;
-          shiftMeta = {
-            jobId: selectedJob.id,
-            jobName: selectedJob.name,
-            workHours: details.workHours,
-            nightHours: details.nightHours,
-            transport: details.transport,
-            breakMins: details.breakMins
-          };
-        }
-
-        if (editingId) {
-          const updatedEvents = myEvents.map(ev => {
-            if (ev.id !== editingId) return ev;
-            return {
-              ...newEvent,
-              id: editingId,
-              endDate: validEndDate,
-              title: title || '無題の予定',
-              amount: calculatedAmount,
-              isExpense,
-              color,
-              shiftMeta
+      // 給料日イベントの自動生成
+      const autoPaydayEvents = useMemo(() => {
+        if (isViewingShared || jobs.length === 0) return [];
+        const grouped = {};
+        events.forEach(ev => {
+          if (!ev.isShift || !ev.jobId) return;
+          const job = jobs.find(j => j.id === ev.jobId);
+          if (!job) return;
+          const [y, m] = ev.date.split('-').map(Number);
+          const paydayStr = getPaydayDateStr(y, m - 1, job.payDay || 25);
+          const key = `${job.id}_${paydayStr}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              id: `payday_${key}`,
+              title: `${job.name} 給料日`,
+              date: paydayStr,
+              endDate: paydayStr,
+              isAllDay: true,
+              startTime: '',
+              endTime: '',
+              color: job.color || '#2E7D5B',
+              amount: 0,
+              isExpense: false,
+              isAutoPayday: true,
+              completed: paydayStr <= todayStr,
+              memo: `${m}月稼働分の自動集計給与`,
             };
-          });
-          setEvents(updatedEvents);
-          setIsModalOpen(false);
-          setEditingId(null);
-          return;
-        }
-
-        const spanDays = Math.round((new Date(validEndDate) - new Date(newEvent.date)) / (1000 * 60 * 60 * 24));
-        const targetStartDates = [newEvent.date];
-        const baseDate = new Date(newEvent.date);
-
-        if (repeatOption === 'weekly_4') {
-          for (let i = 1; i <= 3; i++) {
-            const d = new Date(baseDate);
-            d.setDate(baseDate.getDate() + i * 7);
-            targetStartDates.push(d.toISOString().split('T')[0]);
           }
-        } else if (repeatOption === 'monthly_3') {
-          for (let i = 1; i <= 2; i++) {
-            const d = new Date(baseDate);
-            d.setMonth(baseDate.getMonth() + i);
-            targetStartDates.push(d.toISOString().split('T')[0]);
-          }
-        }
-
-        const repeatGroupId = targetStartDates.length > 1 ? `grp_${Date.now()}` : null;
-
-        const createdItems = targetStartDates.map((dStr, idx) => ({
-          ...newEvent,
-          id: `${Date.now()}_${idx}`,
-          repeatGroupId,
-          date: dStr,
-          endDate: shiftDateStr(dStr, spanDays),
-          title: title || '無題の予定',
-          amount: calculatedAmount,
-          isExpense,
-          color,
-          shiftMeta
-        }));
-
-        setEvents([...myEvents, ...createdItems]);
-        setIsModalOpen(false);
-        setRepeatOption('none');
-        setSubItemInput({ name: '', price: '' });
-      };
-
-      const toggleComplete = (id) => {
-        if (isViewingShared) return;
-        setEvents(myEvents.map(ev => ev.id === id ? { ...ev, completed: !ev.completed } : ev));
-      };
-
-      const deleteEvent = (targetEv) => {
-        if (isViewingShared || targetEv.isAutoPayday) return;
-        if (targetEv.repeatGroupId) {
-          const sameGroupCount = myEvents.filter(e => e.repeatGroupId === targetEv.repeatGroupId).length;
-          if (sameGroupCount > 1) {
-            const deleteAll = window.confirm(
-              `繰り返し予定（全${sameGroupCount}件）です。\n「OK」を押すと関連する繰り返し予定をすべて一括削除します。\n（「キャンセル」で削除を中止）`
-            );
-            if (deleteAll) {
-              setEvents(myEvents.filter(ev => ev.repeatGroupId !== targetEv.repeatGroupId));
-            }
-            return;
-          }
-        }
-        if (window.confirm('この予定を削除しますか？')) {
-          setEvents(myEvents.filter(ev => ev.id !== targetEv.id));
-        }
-      };
-
-      const handleAnalyzeStatement = () => {
-        const items = parseStatementText(statementRawText, selectedDate, myEvents);
-        if (items.length === 0) {
-          alert('日付や金額が読み取れませんでした。\n例：\n2026/11/13 セブンイレブン 850円\nまたはカード利用通知メールの文面を貼り付けてください。');
-          return;
-        }
-        setParsedStatements(items);
-      };
-
-      const handleCommitStatements = () => {
-        const targets = parsedStatements.filter(item => item.selected && item.amount > 0);
-        if (targets.length === 0) {
-          alert('登録する明細を1件以上選択してください。');
-          return;
-        }
-        const tag = statementMethodLabel.trim();
-        const created = targets.map((item, idx) => ({
-          id: `stmt_imp_${Date.now()}_${idx}`,
-          title: tag ? `[${tag}] ${item.title}` : item.title,
-          date: item.date,
-          endDate: item.date,
-          isAllDay: true,
-          startTime: '09:00',
-          endTime: '10:00',
-          color: '#C28540',
-          amount: Number(item.amount),
-          isExpense: true,
-          isShift: false,
-          jobId: '',
-          subItems: [],
-          memo: tag ? `決済方法: ${tag}（明細一括取込）` : '明細一括取込',
-          completed: true
-        }));
-
-        setMyEvents([...myEvents, ...created]);
-        setIsStatementModalOpen(false);
-        setStatementRawText('');
-        setParsedStatements([]);
-        showToast(`${created.length} 件の明細を支出として登録しました！`);
-      };
-
-      const createShareLink = () => {
-        const y = currentDate.getFullYear();
-        const m = currentDate.getMonth() + 1;
-        const monthPrefix = `${y}-${String(m).padStart(2, '0')}`;
-
-        const targetList = events.filter(ev => {
-          if (shareOptions.scope === 'day') return isEventOnDate(ev, selectedDate);
-          const startM = ev.date.slice(0, 7);
-          const endM = (ev.endDate || ev.date).slice(0, 7);
-          return monthPrefix >= startM && monthPrefix <= endM;
+          grouped[key].amount += Number(ev.amount) || 0;
         });
+        return Object.values(grouped).filter(p => p.amount > 0);
+      }, [events, jobs, isViewingShared, todayStr]);
 
-        const sanitized = targetList.map(ev => ({
-          id: ev.id,
-          date: ev.date,
-          endDate: ev.endDate || ev.date,
-          isAllDay: !!ev.isAllDay,
-          startTime: ev.startTime,
-          endTime: ev.endTime,
-          color: ev.color,
-          title: shareOptions.maskTitle ? (ev.isShift ? 'バイト' : '予定あり') : ev.title,
-          amount: shareOptions.hideMoney ? 0 : ev.amount,
-          isExpense: ev.isExpense,
-          isShift: ev.isShift,
-          memo: shareOptions.hideMemo ? '' : ev.memo,
-          subItems: (shareOptions.hideMoney || shareOptions.hideMemo) ? [] : ev.subItems,
-          completed: ev.completed
-        }));
+      const activeEvents = useMemo(() => {
+        if (isViewingShared && sharedEvents) return sharedEvents;
+        return [...events, ...autoPaydayEvents];
+      }, [events, autoPaydayEvents, isViewingShared, sharedEvents]);
 
-        const payload = {
-          targetDate: shareOptions.scope === 'day' ? selectedDate : `${monthPrefix}-01`,
-          events: sanitized
-        };
-
-        const encoded = encodeShareData(payload);
-        const baseUrl = window.location.origin + window.location.pathname;
-        setGeneratedShareUrl(`${baseUrl}?s=${encoded}`);
-      };
-
-      const copyShareUrl = () => {
-        if (!generatedShareUrl) return;
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(generatedShareUrl);
-          alert('共有URLをコピーしました！');
-        }
-      };
-
-      const toggleImportSelection = (id) => {
-        if (selectedImportIds.includes(id)) {
-          setSelectedImportIds(selectedImportIds.filter(item => item !== id));
-        } else {
-          setSelectedImportIds([...selectedImportIds, id]);
-        }
-      };
-
-      const toggleSelectAllImport = () => {
-        if (!sharedEvents) return;
-        if (selectedImportIds.length === sharedEvents.length) {
-          setSelectedImportIds([]);
-        } else {
-          setSelectedImportIds(sharedEvents.map(ev => ev.id));
-        }
-      };
-
-      const executeCustomImport = () => {
-        if (!sharedEvents || selectedImportIds.length === 0) {
-          alert('取り込む予定を1件以上選択してください。');
-          return;
-        }
-        const targets = sharedEvents.filter(ev => selectedImportIds.includes(ev.id));
-        const trimmedBadge = importBadgeLabel.trim();
-
-        const imported = targets.map((ev, i) => ({
-          ...ev,
-          id: `imported_${Date.now()}_${i}`,
-          color: importCustomColor === 'ORIGINAL' ? (ev.color || '#3E7B67') : importCustomColor,
-          isSharedImport: true,
-          sharedBadge: trimmedBadge || '共有',
-          amount: importIncludeMoney ? ev.amount : 0,
-          subItems: importIncludeMoney ? (ev.subItems || []) : [],
-          completed: false
-        }));
-
-        setMyEvents([...myEvents, ...imported]);
-        setIsImportModalOpen(false);
-        exitShareMode();
-        showToast(`${imported.length} 件の予定をカレンダーに取り込みました！`);
-      };
-
-      const exitShareMode = () => {
-        setSharedEvents(null);
-        setSelectedImportIds([]);
-        window.history.replaceState({}, document.title, window.location.pathname);
-      };
-
-      const addJob = () => {
-        if (!newJob.name) return;
-        const clampedPayDay = Math.min(31, Math.max(1, Number(newJob.payDay) || 25));
-        setJobs([...jobs, { ...newJob, payDay: clampedPayDay, id: Date.now().toString() }]);
-        setNewJob({ name: '', hourlyWage: 1100, transportFee: 0, payDay: 25, autoBreak: true, nightBonus: true, color: '#4A8B71' });
-      };
-
-      const updateJobPayDay = (jobId, nextPayDay) => {
-        const clamped = Math.min(31, Math.max(1, Number(nextPayDay) || 25));
-        setJobs(jobs.map(j => j.id === jobId ? { ...j, payDay: clamped } : j));
-      };
-
-      const deleteJob = (id) => {
-        setJobs(jobs.filter(j => j.id !== id));
-      };
-
-      const exportBackup = () => {
-        const data = JSON.stringify({ baseBalance, monthlyBudget, templates, jobs, events: myEvents });
-        setBackupText(data);
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(data);
-          alert('バックアップデータをクリップボードにコピーしました！');
-        }
-      };
-
-      const importBackup = () => {
-        try {
-          const parsed = JSON.parse(backupText);
-          if (parsed.jobs && parsed.events) {
-            if (typeof parsed.baseBalance === 'number') setBaseBalance(parsed.baseBalance);
-            if (typeof parsed.monthlyBudget === 'number') setMonthlyBudget(parsed.monthlyBudget);
-            if (Array.isArray(parsed.templates)) setTemplates(parsed.templates);
-            setJobs(parsed.jobs);
-            setMyEvents(parsed.events);
-            alert('データを復元しました！');
-            setBackupText('');
-          } else {
-            alert('データ形式が正しくありません。');
-          }
-        } catch (err) {
-          alert('読み込みに失敗しました。');
-        }
-      };
-
-      const getDaysInMonth = (date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const days = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay();
-        return { days, firstDay };
-      };
-
-      const monthData = getDaysInMonth(currentDate);
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
+      const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
 
-      const monthlyFinanceEvents = events.filter(ev => {
-        const evDate = new Date(ev.date);
-        return evDate.getFullYear() === year && evDate.getMonth() + 1 === month;
-      }).sort((a, b) => a.date.localeCompare(b.date) || (a.isAllDay ? -1 : 1) || a.startTime.localeCompare(b.startTime));
+      // 月間集計
+      const monthlyStats = useMemo(() => {
+        let expense = 0;
+        let confirmedExpense = 0;
+        let earnedThisMonth = 0;
+        let paydayThisMonth = 0;
 
-      // 表示中の月（year年month月）の集計：
-      // - earnedThisMonth: 今月働いて稼いだ金額（振込は翌月）
-      // - paydayThisMonth: 今月口座に振り込まれる先月分の給料
-      // - expenseThisMonth: 今月使った（使う予定の）支出
-      const monthlyStats = monthlyFinanceEvents.reduce((acc, ev) => {
-        if (ev.isExpense) {
-          acc.expense += ev.amount;
-          if (ev.completed) acc.confirmedExpense += ev.amount;
-        } else if (ev.isShift) {
-          acc.earnedThisMonth += ev.amount;
-        } else {
-          // 翌月給料日イベントや臨時収入（実際に当月口座に入るお金）
-          acc.cashInflow += ev.amount;
-          if (ev.isAutoPayday) acc.paydayThisMonth += ev.amount;
-          if (ev.completed) acc.confirmedCashInflow += ev.amount;
-        }
-        return acc;
-      }, {
-        earnedThisMonth: 0,
-        paydayThisMonth: 0,
-        cashInflow: 0,
-        confirmedCashInflow: 0,
-        expense: 0,
-        confirmedExpense: 0
-      });
-
-      // 口座内金額（現在の実残高）計算：
-      // バイトシフト自体は勤務日には口座に入らず、自動生成された「翌月給料日(isAutoPayday)」がtodayStr以前になった時点で口座に反映
-      const accountStats = useMemo(() => {
-        let confirmedNet = 0;
-        let projectedNet = 0;
-
-        myEvents.forEach(ev => {
-          if (ev.isShift) return; // シフトは給料日イベント側で口座反映するため除外
-          const diff = ev.isExpense ? -ev.amount : ev.amount;
-          if (ev.completed) confirmedNet += diff;
-          projectedNet += diff;
-        });
-
-        autoPaydayEvents.forEach(pd => {
-          if (pd.date <= todayStr) confirmedNet += pd.amount;
-          projectedNet += pd.amount;
-        });
-
-        return {
-          currentAccountBalance: baseBalance + confirmedNet,
-          projectedAccountBalance: baseBalance + projectedNet
-        };
-      }, [myEvents, autoPaydayEvents, baseBalance, todayStr]);
-
-      // カテゴリ別支出集計
-      const categoryExpenseBreakdown = (() => {
-        const map = {};
-        monthlyFinanceEvents.forEach(ev => {
-          if (!ev.isExpense || ev.amount <= 0) return;
-          const catName = getCategoryNameByColor(ev.color);
-          if (!map[catName]) {
-            const matched = COLOR_PALETTE.find(c => c.name === catName);
-            map[catName] = { name: catName, color: matched ? matched.color : '#64748B', amount: 0 };
+        activeEvents.forEach(ev => {
+          if (!ev.date.startsWith(monthPrefix)) return;
+          const amt = Number(ev.amount) || 0;
+          if (ev.isExpense) {
+            expense += amt;
+            if (ev.completed) confirmedExpense += amt;
+          } else {
+            if (ev.isShift) {
+              earnedThisMonth += amt;
+            } else if (ev.isAutoPayday) {
+              paydayThisMonth += amt;
+            } else {
+              earnedThisMonth += amt;
+            }
           }
-          map[catName].amount += ev.amount;
         });
-        const list = Object.values(map).sort((a, b) => b.amount - a.amount);
-        return list.map(item => ({
-          ...item,
-          percent: monthlyStats.expense > 0 ? Math.round((item.amount / monthlyStats.expense) * 100) : 0
-        }));
-      })();
 
-      // 今月使える金額（今月の予算残高）
+        return { expense, confirmedExpense, earnedThisMonth, paydayThisMonth };
+      }, [activeEvents, monthPrefix]);
+
+      // 口座内金額（今日までの確定反映＋見込）
+      const accountStats = useMemo(() => {
+        let currentAccountBalance = baseBalance;
+        let projectedAccountBalance = baseBalance;
+
+        activeEvents.forEach(ev => {
+          if (ev.isShift) return; // シフトは翌月のautoPaydayで口座に入るため二重計上しない
+          const amt = Number(ev.amount) || 0;
+          if (amt <= 0) return;
+          if (ev.isExpense) {
+            projectedAccountBalance -= amt;
+            if (ev.completed || ev.date <= todayStr) {
+              currentAccountBalance -= amt;
+            }
+          } else {
+            projectedAccountBalance += amt;
+            if (ev.completed || ev.date <= todayStr) {
+              currentAccountBalance += amt;
+            }
+          }
+        });
+
+        return { currentAccountBalance, projectedAccountBalance };
+      }, [activeEvents, baseBalance, todayStr]);
+
       const usableRemainingThisMonth = monthlyBudget - monthlyStats.expense;
       const budgetPercent = monthlyBudget > 0 ? Math.min(100, Math.round((monthlyStats.expense / monthlyBudget) * 100)) : 0;
       const isOverBudget = monthlyBudget > 0 && monthlyStats.expense > monthlyBudget;
       const isNearBudget = monthlyBudget > 0 && !isOverBudget && budgetPercent >= 80;
 
-      // 勤務先別の「今月稼いだ金額」＆「翌月振込日」一覧
-      const jobEarnedBreakdown = jobs.map(job => {
-        const jobShifts = monthlyFinanceEvents.filter(ev => ev.isShift && (ev.shiftMeta?.jobId === job.id || ev.jobId === job.id));
-        const totalPay = jobShifts.reduce((sum, ev) => sum + ev.amount, 0);
-        const totalHours = jobShifts.reduce((sum, ev) => sum + (ev.shiftMeta?.workHours || 0), 0);
-        const paydayStr = getNextMonthPayDate(year, month, job.payDay || 25);
-        return { ...job, count: jobShifts.length, totalPay, totalHours: Math.round(totalHours * 10) / 10, paydayStr };
-      }).filter(j => j.count > 0);
+      // カテゴリ別支出内訳
+      const categoryExpenseBreakdown = useMemo(() => {
+        const map = {};
+        activeEvents.forEach(ev => {
+          if (!ev.date.startsWith(monthPrefix) || !ev.isExpense || !(ev.amount > 0)) return;
+          const name = getCategoryNameByColor(ev.color);
+          if (!map[name]) map[name] = { name, color: ev.color, amount: 0 };
+          map[name].amount += Number(ev.amount);
+        });
+        return Object.values(map).sort((a, b) => b.amount - a.amount);
+      }, [activeEvents, monthPrefix]);
 
-      const dayEvents = events
-        .filter(e => isEventOnDate(e, selectedDate))
-        .sort((a, b) => a.date.localeCompare(b.date) || (a.isAllDay ? -1 : 1) || a.startTime.localeCompare(b.startTime));
+      // 勤務先別稼働集計
+      const jobEarnedBreakdown = useMemo(() => {
+        return jobs.map(j => {
+          const matched = activeEvents.filter(ev => ev.date.startsWith(monthPrefix) && ev.isShift && ev.jobId === j.id);
+          const totalPay = matched.reduce((sum, ev) => sum + (Number(ev.amount) || 0), 0);
+          const totalHours = matched.reduce((sum, ev) => sum + (ev.shiftMeta?.workHours || 0), 0);
+          return {
+            ...j,
+            count: matched.length,
+            totalHours: Number(totalHours.toFixed(1)),
+            totalPay,
+            paydayStr: getPaydayDateStr(year, month - 1, j.payDay || 25),
+          };
+        }).filter(item => item.count > 0);
+      }, [jobs, activeEvents, monthPrefix, year, month]);
 
-      const dayStats = dayEvents.reduce((acc, ev) => {
-        if (ev.date !== selectedDate) return acc;
-        if (ev.isExpense) acc.expense += ev.amount;
-        else if (ev.isShift) acc.earned += ev.amount;
-        else acc.income += ev.amount;
-        return acc;
-      }, { income: 0, earned: 0, expense: 0 });
+      // 生理周期の分析・予測計算
+      const cycleAnalysis = useMemo(() => {
+        const sorted = [...cycleLogs].sort((a, b) => a.startDate.localeCompare(b.startDate));
+        let effectiveCycleDays = Number(cycleConfig.avgCycleDays) || 28;
+        if (sorted.length >= 2) {
+          let sumDiff = 0;
+          let validCount = 0;
+          for (let i = 1; i < sorted.length; i++) {
+            const d = diffDays(sorted[i - 1].startDate, sorted[i].startDate);
+            if (d >= 18 && d <= 50) {
+              sumDiff += d;
+              validCount++;
+            }
+          }
+          if (validCount > 0) {
+            effectiveCycleDays = Math.round(sumDiff / validCount);
+          }
+        }
 
-      const filteredFinanceList = monthlyFinanceEvents.filter(ev => {
-        if (ev.amount <= 0) return false;
-        if (financeFilter === 'income') return !ev.isExpense;
-        if (financeFilter === 'expense') return ev.isExpense;
-        return true;
-      });
+        const latest = sorted[sorted.length - 1] || null;
+        const periodDuration = Number(cycleConfig.avgPeriodDays) || 5;
+        let predictedWindows = [];
 
-      const searchResults = searchQuery.trim() === '' ? [] : events.filter(ev => {
-        const q = searchQuery.toLowerCase();
-        const inTitle = (ev.title || '').toLowerCase().includes(q);
-        const inMemo = (ev.memo || '').toLowerCase().includes(q);
-        const inBadge = (ev.sharedBadge || '').toLowerCase().includes(q);
-        const inSub = (ev.subItems || []).some(s => s.name.toLowerCase().includes(q));
-        return inTitle || inMemo || inBadge || inSub;
-      }).sort((a, b) => b.date.localeCompare(a.date));
+        if (latest) {
+          for (let k = 1; k <= 3; k++) {
+            const predStart = addDaysStr(latest.startDate, effectiveCycleDays * k);
+            const predEnd = addDaysStr(predStart, periodDuration - 1);
+            predictedWindows.push({ start: predStart, end: predEnd });
+          }
+        }
 
-      const selectedHoliday = getJapaneseHolidayName(selectedDate);
-      const baseAppUrl = window.location.origin + window.location.pathname;
+        return { sorted, effectiveCycleDays, latest, periodDuration, predictedWindows };
+      }, [cycleLogs, cycleConfig]);
+
+      const getDateCycleStatus = (dateStr) => {
+        if (!cycleConfig.enabled) return null;
+        for (const log of cycleAnalysis.sorted) {
+          const end = log.endDate || addDaysStr(log.startDate, cycleAnalysis.periodDuration - 1);
+          if (dateStr >= log.startDate && dateStr <= end) {
+            return { type: 'actual', isStart: dateStr === log.startDate, log };
+          }
+        }
+        for (const win of cycleAnalysis.predictedWindows) {
+          if (dateStr >= win.start && dateStr <= win.end) {
+            return { type: 'predicted', isStart: dateStr === win.start };
+          }
+        }
+        return null;
+      };
+
+      const selectedDayCycleLog = useMemo(() => {
+        return cycleAnalysis.sorted.find(l => {
+          const end = l.endDate || addDaysStr(l.startDate, cycleAnalysis.periodDuration - 1);
+          return selectedDate >= l.startDate && selectedDate <= end;
+        }) || null;
+      }, [cycleAnalysis, selectedDate]);
+
+      useEffect(() => {
+        setCycleNoteInput(selectedDayCycleLog?.note || '');
+      }, [selectedDate, selectedDayCycleLog]);
+
+      const handleStartCycleOnSelectedDate = () => {
+        const exists = cycleLogs.some(l => l.startDate === selectedDate);
+        if (exists) {
+          showToast('この日はすでに開始日として記録されています');
+          return;
+        }
+        const entry = {
+          id: 'cyc_' + Date.now(),
+          startDate: selectedDate,
+          endDate: addDaysStr(selectedDate, (Number(cycleConfig.avgPeriodDays) || 5) - 1),
+          note: cycleNoteInput,
+        };
+        setCycleLogs(prev => [...prev, entry]);
+        showToast(`${selectedDate.slice(5)} を生理開始日として記録しました`);
+      };
+
+      const handleSetCycleEndOnSelectedDate = () => {
+        if (!selectedDayCycleLog) return;
+        if (selectedDate < selectedDayCycleLog.startDate) return;
+        setCycleLogs(prev => prev.map(l => l.id === selectedDayCycleLog.id ? { ...l, endDate: selectedDate } : l));
+        showToast(`${selectedDate.slice(5)} を終了日に更新しました`);
+      };
+
+      const handleSaveCycleNote = () => {
+        if (!selectedDayCycleLog) return;
+        setCycleLogs(prev => prev.map(l => l.id === selectedDayCycleLog.id ? { ...l, note: cycleNoteInput } : l));
+        showToast('体調メモを保存しました');
+      };
+
+      // カレンダーグリッド生成
+      const calendarDays = useMemo(() => {
+        const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const cells = [];
+        for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) {
+          cells.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+        }
+        return cells;
+      }, [year, month]);
+
+      const getEventsForDate = (dateStr) => {
+        return activeEvents.filter(ev => {
+          const end = ev.endDate || ev.date;
+          return dateStr >= ev.date && dateStr <= end;
+        }).sort((a, b) => {
+          if (a.isAllDay && !b.isAllDay) return -1;
+          if (!a.isAllDay && b.isAllDay) return 1;
+          return (a.startTime || '').localeCompare(b.startTime || '');
+        });
+      };
+
+      const dayEvents = useMemo(() => getEventsForDate(selectedDate), [activeEvents, selectedDate]);
+
+      // 収支タブの履歴フィルター
+      const filteredFinanceList = useMemo(() => {
+        return activeEvents
+          .filter(ev => ev.date.startsWith(monthPrefix) && (Number(ev.amount) > 0 || ev.isShift))
+          .filter(ev => {
+            if (financeFilter === 'income') return !ev.isExpense;
+            if (financeFilter === 'expense') return ev.isExpense;
+            return true;
+          })
+          .sort((a, b) => b.date.localeCompare(a.date));
+      }, [activeEvents, monthPrefix, financeFilter]);
+
+      // 全期間検索
+      const searchResults = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return [];
+        return activeEvents.filter(ev => {
+          const subStr = (ev.subItems || []).map(s => s.name).join(' ').toLowerCase();
+          return (
+            (ev.title || '').toLowerCase().includes(q) ||
+            (ev.memo || '').toLowerCase().includes(q) ||
+            (ev.sharedBadge || '').toLowerCase().includes(q) ||
+            subStr.includes(q)
+          );
+        }).sort((a, b) => b.date.localeCompare(a.date));
+      }, [activeEvents, searchQuery]);
+
+      // モーダル操作（予定 / 収支 / バイト 分離タブ）
+      const openCreateModal = (initialTab = 'schedule') => {
+        const targetDate = viewMode === 'day' ? selectedDate : todayStr;
+        setEditingId(null);
+        setModalTab(initialTab);
+        setRepeatOption('none');
+        setShowScheduleAmount(false);
+        setShowSubItemsPanel(false);
+        setNewEvent({
+          title: '',
+          date: targetDate,
+          endDate: targetDate,
+          isAllDay: initialTab === 'finance',
+          startTime: '10:00',
+          endTime: '12:00',
+          color: initialTab === 'finance' ? '#C28540' : initialTab === 'shift' ? '#2E7D5B' : '#3E7B67',
+          amount: 0,
+          isExpense: true,
+          isShift: initialTab === 'shift',
+          jobId: jobs[0]?.id || '',
+          memo: '',
+          subItems: [],
+          reminder: 'none',
+        });
+        setIsModalOpen(true);
+      };
+
+      const openEditModal = (ev) => {
+        setEditingId(ev.id);
+        const tab = ev.isShift ? 'shift' : (ev.amount > 0 && ev.isAllDay ? 'finance' : 'schedule');
+        setModalTab(tab);
+        setRepeatOption('none');
+        setShowScheduleAmount(tab === 'schedule' && Number(ev.amount) > 0);
+        setShowSubItemsPanel((ev.subItems || []).length > 0);
+        setNewEvent({
+          ...ev,
+          endDate: ev.endDate || ev.date,
+          subItems: ev.subItems || [],
+          reminder: ev.reminder || 'none',
+        });
+        setIsModalOpen(true);
+      };
+
+      const switchModalTab = (tab) => {
+        setModalTab(tab);
+        if (tab === 'schedule') {
+          setNewEvent(prev => ({
+            ...prev,
+            isShift: false,
+            isAllDay: false,
+            color: '#3E7B67',
+          }));
+        } else if (tab === 'finance') {
+          setNewEvent(prev => ({
+            ...prev,
+            isShift: false,
+            isAllDay: true,
+            isExpense: true,
+            color: '#C28540',
+          }));
+        } else if (tab === 'shift') {
+          const defaultJob = jobs[0];
+          setNewEvent(prev => ({
+            ...prev,
+            isShift: true,
+            isAllDay: false,
+            isExpense: false,
+            jobId: prev.jobId || defaultJob?.id || '',
+            color: defaultJob?.color || '#2E7D5B',
+          }));
+        }
+      };
+
+      const shiftPreviewDetails = useMemo(() => {
+        if (modalTab !== 'shift') return null;
+        const job = jobs.find(j => j.id === newEvent.jobId);
+        if (!job) return null;
+        return calculateShiftDetails(newEvent.startTime, newEvent.endTime, job);
+      }, [modalTab, jobs, newEvent.jobId, newEvent.startTime, newEvent.endTime]);
+
+      const handleAddSubItem = () => {
+        const price = Number(subItemInput.price);
+        if (!subItemInput.name.trim() || price <= 0) return;
+        const nextSubs = [...newEvent.subItems, { id: 'sub_' + Date.now(), name: subItemInput.name.trim(), price }];
+        const sum = nextSubs.reduce((acc, item) => acc + item.price, 0);
+        setNewEvent({ ...newEvent, subItems: nextSubs, amount: sum });
+        setSubItemInput({ name: '', price: '' });
+      };
+
+      const handleRemoveSubItem = (subId) => {
+        const nextSubs = newEvent.subItems.filter(s => s.id !== subId);
+        const sum = nextSubs.reduce((acc, item) => acc + item.price, 0);
+        setNewEvent({ ...newEvent, subItems: nextSubs, amount: nextSubs.length > 0 ? sum : newEvent.amount });
+      };
+
+      const applyTemplateToForm = (tpl) => {
+        setNewEvent(prev => ({
+          ...prev,
+          title: tpl.title,
+          amount: Number(tpl.amount),
+          color: tpl.color,
+          isExpense: tpl.isExpense !== false,
+        }));
+      };
+
+      const handleSaveEvent = (e) => {
+        e.preventDefault();
+        let finalTitle = newEvent.title.trim();
+        let finalAmount = Number(newEvent.amount) || 0;
+        let finalIsExpense = newEvent.isExpense;
+        let finalColor = newEvent.color;
+        let shiftMeta = null;
+
+        if (modalTab === 'shift') {
+          const job = jobs.find(j => j.id === newEvent.jobId);
+          if (!job) return;
+          const calc = calculateShiftDetails(newEvent.startTime, newEvent.endTime, job);
+          finalTitle = `${job.name} バイト`;
+          finalAmount = calc ? calc.pay : 0;
+          finalIsExpense = false;
+          finalColor = job.color || '#2E7D5B';
+          shiftMeta = calc;
+        } else if (modalTab === 'finance') {
+          if (!finalTitle) finalTitle = finalIsExpense ? '支出' : '収入';
+        } else {
+          if (!finalTitle) return;
+          if (!showScheduleAmount) finalAmount = 0;
+        }
+
+        const basePayload = {
+          ...newEvent,
+          title: finalTitle,
+          amount: finalAmount,
+          isExpense: finalIsExpense,
+          isShift: modalTab === 'shift',
+          color: finalColor,
+          shiftMeta,
+          completed: editingId ? newEvent.completed : (modalTab === 'finance' && newEvent.date <= todayStr),
+        };
+
+        if (editingId) {
+          setEvents(prev => prev.map(ev => ev.id === editingId ? { ...basePayload, id: editingId } : ev));
+          showToast('変更を保存しました');
+        } else {
+          const itemsToAdd = [];
+          const spanDays = diffDays(basePayload.date, basePayload.endDate || basePayload.date);
+          let count = 1;
+          if (repeatOption === 'weekly_4') count = 4;
+          if (repeatOption === 'monthly_3') count = 3;
+
+          for (let i = 0; i < count; i++) {
+            let targetDate = basePayload.date;
+            if (repeatOption === 'weekly_4') {
+              targetDate = addDaysStr(basePayload.date, i * 7);
+            } else if (repeatOption === 'monthly_3') {
+              const [y, m, d] = basePayload.date.split('-').map(Number);
+              const dt = new Date(y, m - 1 + i, d);
+              targetDate = formatDateStr(dt);
+            }
+            itemsToAdd.push({
+              ...basePayload,
+              id: `ev_${Date.now()}_${i}`,
+              date: targetDate,
+              endDate: addDaysStr(targetDate, Math.max(0, spanDays)),
+            });
+          }
+          setEvents(prev => [...itemsToAdd, ...prev]);
+          showToast(count > 1 ? `${count}件をまとめて登録しました` : '登録しました');
+        }
+
+        setIsModalOpen(false);
+      };
+
+      const toggleComplete = (id) => {
+        setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, completed: !ev.completed } : ev));
+      };
+
+      const deleteEvent = (ev) => {
+        setEvents(prev => prev.filter(item => item.id !== ev.id));
+        showToast('削除しました');
+      };
+
+      // ワンタップ定型文即登録
+      const handleQuickTemplateRegister = (tpl) => {
+        const targetDate = viewMode === 'day' ? selectedDate : todayStr;
+        const ev = {
+          id: 'tpl_ev_' + Date.now(),
+          title: tpl.title,
+          date: targetDate,
+          endDate: targetDate,
+          isAllDay: true,
+          startTime: '',
+          endTime: '',
+          color: tpl.color,
+          amount: Number(tpl.amount),
+          isExpense: tpl.isExpense !== false,
+          isShift: false,
+          completed: targetDate <= todayStr,
+          memo: 'ワンタップ定型登録',
+          subItems: [],
+          reminder: 'none',
+        };
+        setEvents(prev => [ev, ...prev]);
+        setIsQuickMenuOpen(false);
+        showToast(`「${tpl.title}」(${Number(tpl.amount).toLocaleString()}円)を登録しました`);
+      };
+
+      const addTemplate = () => {
+        if (!newTemplate.title.trim() || Number(newTemplate.amount) <= 0) return;
+        setTemplates(prev => [...prev, { ...newTemplate, id: 'tpl_' + Date.now(), amount: Number(newTemplate.amount) }]);
+        setNewTemplate({ title: '', amount: 0, color: '#C28540', isExpense: true });
+        showToast('定型文を追加しました');
+      };
+
+      const deleteTemplate = (id) => {
+        setTemplates(prev => prev.filter(t => t.id !== id));
+      };
+
+      // 勤務先管理
+      const addJob = () => {
+        if (!newJob.name.trim()) return;
+        setJobs(prev => [...prev, { ...newJob, id: 'job_' + Date.now() }]);
+        setNewJob({
+          name: '',
+          hourlyWage: 1200,
+          transportFee: 0,
+          payDay: 25,
+          autoBreak: true,
+          nightBonus: true,
+          color: '#2E7D5B',
+        });
+        showToast('勤務先を追加しました');
+      };
+
+      const deleteJob = (id) => {
+        setJobs(prev => prev.filter(j => j.id !== id));
+      };
+
+      const updateJobPayDay = (id, payDayVal) => {
+        setJobs(prev => prev.map(j => j.id === id ? { ...j, payDay: Number(payDayVal) } : j));
+      };
+
+      // 明細・メール一括解析
+      const handleAnalyzeStatement = () => {
+        const lines = statementRawText.split('\n').map(l => l.trim()).filter(Boolean);
+        const results = [];
+        const currentYear = new Date().getFullYear();
+
+        lines.forEach((line, idx) => {
+          const dateMatch = line.match(/(20\d{2})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/) || line.match(/(\d{1,2})[\/\-月](\d{1,2})日?/);
+          const amountMatch = line.match(/([0-9,]{2,})\s*円/) || line.match(/,\s*([0-9]{2,})\s*$/) || line.match(/￥\s*([0-9,]+)/);
+
+          if (amountMatch) {
+            let parsedDate = todayStr;
+            if (dateMatch) {
+              if (dateMatch.length === 4) {
+                parsedDate = `${dateMatch[1]}-${String(dateMatch[2]).padStart(2, '0')}-${String(dateMatch[3]).padStart(2, '0')}`;
+              } else if (dateMatch.length === 3) {
+                parsedDate = `${currentYear}-${String(dateMatch[1]).padStart(2, '0')}-${String(dateMatch[2]).padStart(2, '0')}`;
+              }
+            }
+            const amount = Number(amountMatch[1].replace(/,/g, ''));
+            let cleanedTitle = line
+              .replace(/(20\d{2})[\/\-年](\d{1,2})[\/\-月](\d{1,2})日?/g, '')
+              .replace(/(\d{1,2})[\/\-月](\d{1,2})日?/g, '')
+              .replace(/([0-9,]{2,})\s*円/g, '')
+              .replace(/￥\s*([0-9,]+)/g, '')
+              .replace(/,/g, ' ')
+              .trim();
+            if (!cleanedTitle) cleanedTitle = 'カード・電子マネー利用';
+            const finalTitle = statementMethodLabel.trim() ? `[${statementMethodLabel.trim()}] ${cleanedTitle}` : cleanedTitle;
+
+            const dup = events.find(ev => ev.isExpense && ev.date === parsedDate && Number(ev.amount) === amount);
+            results.push({
+              id: `stmt_${Date.now()}_${idx}`,
+              date: parsedDate,
+              amount,
+              title: finalTitle,
+              selected: !dup,
+              isDuplicate: Boolean(dup),
+              duplicateReason: dup ? `同日・同額「${dup.title}」が登録済` : '',
+            });
+          }
+        });
+
+        setParsedStatements(results);
+        if (results.length === 0) showToast('日付・金額のパターンを検出できませんでした');
+      };
+
       const duplicateCountInModal = parsedStatements.filter(i => i.isDuplicate).length;
 
+      const handleCommitStatements = () => {
+        const chosen = parsedStatements.filter(i => i.selected);
+        if (chosen.length === 0) return;
+        const newItems = chosen.map((item, idx) => ({
+          id: `imp_stmt_${Date.now()}_${idx}`,
+          title: item.title,
+          date: item.date,
+          endDate: item.date,
+          isAllDay: true,
+          startTime: '',
+          endTime: '',
+          color: '#C28540',
+          amount: Number(item.amount),
+          isExpense: true,
+          isShift: false,
+          completed: true,
+          memo: '明細自動取込',
+          subItems: [],
+          reminder: 'none',
+        }));
+        setEvents(prev => [...newItems, ...prev]);
+        setIsStatementModalOpen(false);
+        showToast(`${newItems.length}件の明細を支出登録しました`);
+      };
+
+      // 共有リンク作成＆取り込み
+      const createShareLink = () => {
+        const targetList = activeEvents.filter(ev => {
+          if (ev.isAutoPayday) return false;
+          if (shareOptions.scope === 'day') return ev.date === selectedDate;
+          return ev.date.startsWith(monthPrefix);
+        }).map(ev => ({
+          ...ev,
+          title: shareOptions.maskTitle ? (ev.isShift ? 'バイト' : '予定あり') : ev.title,
+          amount: shareOptions.hideMoney ? 0 : ev.amount,
+          memo: shareOptions.hideMemo ? '' : ev.memo,
+          subItems: shareOptions.hideMemo ? [] : (ev.subItems || []),
+        }));
+
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(targetList))));
+        const url = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
+        setGeneratedShareUrl(url);
+      };
+
+      const copyShareUrl = () => {
+        navigator.clipboard.writeText(generatedShareUrl);
+        showToast('共有URLをコピーしました');
+      };
+
+      const toggleImportSelection = (id) => {
+        setSelectedImportIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+      };
+
+      const toggleSelectAllImport = () => {
+        if (!sharedEvents) return;
+        if (selectedImportIds.length === sharedEvents.length) setSelectedImportIds([]);
+        else setSelectedImportIds(sharedEvents.map(e => e.id));
+      };
+
+      const executeCustomImport = () => {
+        if (!sharedEvents) return;
+        const chosen = sharedEvents.filter(ev => selectedImportIds.includes(ev.id)).map((ev, idx) => ({
+          ...ev,
+          id: `shared_imp_${Date.now()}_${idx}`,
+          color: importCustomColor === 'ORIGINAL' ? ev.color : importCustomColor,
+          isSharedImport: true,
+          sharedBadge: importBadgeLabel.trim() || '共有',
+          amount: importIncludeMoney ? ev.amount : 0,
+          isShift: false,
+        }));
+        setEvents(prev => [...chosen, ...prev]);
+        setIsImportModalOpen(false);
+        setIsViewingShared(false);
+        setSharedEvents(null);
+        window.history.replaceState({}, '', window.location.pathname);
+        showToast(`${chosen.length}件の共有予定を取り込みました`);
+      };
+
+      // バックアップ書き出し・復元
+      const exportBackup = () => {
+        const payload = JSON.stringify({ events, jobs, monthlyBudget, baseBalance, templates, cycleConfig, cycleLogs });
+        navigator.clipboard.writeText(payload);
+        showToast('全データをクリップボードにコピーしました');
+      };
+
+      const importBackup = () => {
+        try {
+          const parsed = JSON.parse(backupText);
+          if (parsed.events) setEvents(parsed.events);
+          if (parsed.jobs) setJobs(parsed.jobs);
+          if (typeof parsed.monthlyBudget === 'number') setMonthlyBudget(parsed.monthlyBudget);
+          if (typeof parsed.baseBalance === 'number') setBaseBalance(parsed.baseBalance);
+          if (parsed.templates) setTemplates(parsed.templates);
+          if (parsed.cycleConfig) setCycleConfig(parsed.cycleConfig);
+          if (parsed.cycleLogs) setCycleLogs(parsed.cycleLogs);
+          setBackupText('');
+          showToast('バックアップデータを復元しました');
+        } catch {
+          showToast('データ形式が正しくありません');
+        }
+      };
+
+      const handleInstallPWA = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        setDeferredPrompt(null);
+      };
+
+      const baseAppUrl = `${window.location.origin}${window.location.pathname}`;
+
       return (
-        <div
-          className="flex-1 flex flex-col pb-20 relative font-sans"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {toastMessage && (
-            <div className="bg-slate-900 text-emerald-300 px-3.5 py-2.5 text-xs flex justify-between items-center shadow-md z-30">
-              <span className="font-bold">{toastMessage}</span>
-              <button onClick={() => setToastMessage('')} className="text-stone-400 hover:text-white ml-2">✕</button>
+        <div className="max-w-md mx-auto min-h-screen bg-stone-100/70 pb-24 shadow-xl relative border-x border-stone-200/80">
+          {/* トースト通知 */}
+          {toastMsg && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
+              {toastMsg}
             </div>
           )}
 
-          {isViewingShared && (
-            <div className="bg-emerald-800 text-stone-50 p-3 text-xs flex flex-col space-y-2 shadow-sm z-20 border-b border-emerald-900">
-              <div className="flex justify-between items-center">
-                <span className="font-bold tracking-wide">共有スケジュールを閲覧中（{sharedEvents.length}件）</span>
-                <span className="text-[10px] bg-white/15 px-2 py-0.5 rounded-full">閲覧モード</span>
-              </div>
-              <div className="flex space-x-2">
+          {/* 共有閲覧バナー */}
+          {isViewingShared && sharedEvents && (
+            <div className="bg-emerald-800 text-white px-4 py-2.5 text-xs flex items-center justify-between">
+              <span className="font-bold">共有カレンダー閲覧中（{sharedEvents.length}件）</span>
+              <div className="space-x-1.5">
                 <button
-                  onClick={() => {
-                    setSelectedImportIds(sharedEvents.map(ev => ev.id));
-                    setIsImportModalOpen(true);
-                  }}
-                  className="flex-1 bg-stone-50 text-emerald-900 font-bold py-1.5 rounded-lg shadow-sm hover:bg-white transition"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="bg-white text-emerald-900 px-2.5 py-1 rounded-lg font-bold"
                 >
-                  選択してカレンダーに取り込む
+                  取り込む
                 </button>
                 <button
-                  onClick={exitShareMode}
-                  className="px-3.5 bg-emerald-900/80 hover:bg-emerald-950 text-stone-200 font-bold py-1.5 rounded-lg transition"
+                  onClick={() => {
+                    setIsViewingShared(false);
+                    setSharedEvents(null);
+                    window.history.replaceState({}, '', window.location.pathname);
+                  }}
+                  className="bg-emerald-950/60 px-2 py-1 rounded-lg"
                 >
                   閉じる
                 </button>
@@ -1304,199 +1237,281 @@
             </div>
           )}
 
-          {/* ヘッダー：3大指標を明確に分離して常時表示 */}
-          <header className={`${isViewingShared ? 'bg-slate-700' : 'bg-slate-800'} text-stone-50 px-4 py-3.5 sticky top-0 z-10 shadow-sm`}>
-            <div className="flex justify-between items-center mb-2.5">
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-bold tracking-tight">{year}年 {month}月</h1>
-                {!isViewingShared && (
-                  <>
-                    <button
-                      onClick={() => { setGeneratedShareUrl(''); setIsShareModalOpen(true); }}
-                      className="bg-white/10 hover:bg-white/20 text-stone-200 text-[11px] px-2 py-1 rounded-md font-medium border border-white/10 transition"
-                    >
-                      共有
-                    </button>
-                    <button
-                      onClick={() => { setStatementRawText(''); setParsedStatements([]); setIsStatementModalOpen(true); }}
-                      className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[11px] px-2 py-1 rounded-md font-medium border border-amber-400/20 transition"
-                    >
-                      明細取込
-                    </button>
-                  </>
-                )}
+          {/* TOPヘッダー */}
+          <header className="bg-white border-b border-stone-200/80 px-4 pt-3.5 pb-3 sticky top-0 z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => changeMonth(-1)}
+                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-slate-600 font-bold"
+                >
+                  ‹
+                </button>
+                <h1 className="text-base font-bold text-slate-800 px-1">
+                  {year}年 {month}月
+                </h1>
+                <button
+                  onClick={() => changeMonth(1)}
+                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-slate-600 font-bold"
+                >
+                  ›
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentDate(new Date());
+                    setSelectedDate(todayStr);
+                  }}
+                  className="text-[11px] bg-stone-100 hover:bg-stone-200 text-slate-700 px-2.5 py-1 rounded-lg font-bold ml-1"
+                >
+                  今日
+                </button>
               </div>
-              <div className="flex items-center space-x-1 bg-slate-900/50 p-0.5 rounded-lg border border-white/10">
-                <button onClick={() => setCurrentDate(new Date(year, month - 2, 1))} className="px-2 py-1 hover:bg-white/10 rounded text-xs text-stone-300">◀</button>
-                <button onClick={() => { setCurrentDate(new Date()); setSelectedDate(todayStr); }} className="px-2 py-1 hover:bg-white/10 rounded text-xs font-bold text-white">今日</button>
-                <button onClick={() => setCurrentDate(new Date(year, month, 1))} className="px-2 py-1 hover:bg-white/10 rounded text-xs text-stone-300">▶</button>
-              </div>
+
+              {!isViewingShared && (
+                <button
+                  onClick={() => { setGeneratedShareUrl(''); setIsShareModalOpen(true); }}
+                  className="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl font-bold transition"
+                >
+                  共有URL
+                </button>
+              )}
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5 pt-2.5 border-t border-white/10 text-center text-xs">
-              <div className="bg-slate-900/45 py-1.5 px-1.5 rounded-lg border border-white/5">
-                <div className="text-slate-400 text-[9px]">{month}月稼いだ金額</div>
-                <div className="text-xs sm:text-sm font-bold text-emerald-300 mt-0.5">+{monthlyStats.earnedThisMonth.toLocaleString()}円</div>
-                <div className="text-[8px] text-slate-400 mt-0.5">翌月給料日振込</div>
-              </div>
-              <div className="bg-slate-900/45 py-1.5 px-1.5 rounded-lg border border-white/5">
-                <div className="text-slate-400 text-[9px]">{month}月使える金額</div>
-                <div className={`text-xs sm:text-sm font-bold mt-0.5 ${usableRemainingThisMonth >= 0 ? 'text-amber-200' : 'text-rose-300'}`}>
-                  {usableRemainingThisMonth.toLocaleString()}円
+            {/* TOP上部3指標サマリー（真ん中の「使える金額」タップで設定画面へ遷移） */}
+            {!isViewingShared && (
+              <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                <div
+                  onClick={() => setViewMode('finance')}
+                  className="bg-stone-50 hover:bg-stone-100 border border-stone-200/80 rounded-xl p-2 cursor-pointer transition"
+                >
+                  <div className="text-[10px] text-slate-500 font-bold">口座内金額</div>
+                  <div className={`text-xs font-bold mt-0.5 ${accountStats.currentAccountBalance >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>
+                    {accountStats.currentAccountBalance.toLocaleString()}円
+                  </div>
                 </div>
-                <div className="text-[8px] text-slate-400 mt-0.5">予算残高</div>
-              </div>
-              <div className="bg-slate-900/45 py-1.5 px-1.5 rounded-lg border border-white/5">
-                <div className="text-slate-400 text-[9px]">口座内金額</div>
-                <div className={`text-xs sm:text-sm font-bold mt-0.5 ${accountStats.currentAccountBalance >= 0 ? 'text-stone-100' : 'text-rose-300'}`}>
-                  {accountStats.currentAccountBalance.toLocaleString()}円
+
+                <div
+                  onClick={jumpToBudgetSettings}
+                  title="タップで予算上限を設定"
+                  className={`rounded-xl p-2 border cursor-pointer transition active:scale-95 ${
+                    isOverBudget
+                      ? 'bg-rose-50 border-rose-300'
+                      : isNearBudget
+                      ? 'bg-amber-50 border-amber-300'
+                      : 'bg-slate-800 border-slate-800 text-white'
+                  }`}
+                >
+                  <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 ${
+                    isOverBudget ? 'text-rose-700' : isNearBudget ? 'text-amber-800' : 'text-slate-300'
+                  }`}>
+                    <span>今月使える金額</span>
+                    <span className="text-[9px]">⚙</span>
+                  </div>
+                  <div className={`text-xs font-bold mt-0.5 ${
+                    isOverBudget ? 'text-rose-700' : isNearBudget ? 'text-amber-900' : 'text-white'
+                  }`}>
+                    {usableRemainingThisMonth.toLocaleString()}円
+                  </div>
                 </div>
-                <div className="text-[8px] text-slate-400 mt-0.5">現在の実残高</div>
+
+                <div
+                  onClick={() => setViewMode('finance')}
+                  className="bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200/80 rounded-xl p-2 cursor-pointer transition"
+                >
+                  <div className="text-[10px] text-emerald-800 font-bold">今月稼いだ金額</div>
+                  <div className="text-xs font-bold text-emerald-700 mt-0.5">
+                    +{monthlyStats.earnedThisMonth.toLocaleString()}円
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </header>
 
-          <main className="flex-1 p-3">
-            {/* 1. 月表示 */}
+          {/* メインコンテンツ（左右スワイプで月・日切替＋スライドアニメ） */}
+          <main
+            className="p-3.5"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* 1. 月表示タブ */}
             {viewMode === 'month' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-stone-200/80 p-2.5">
-                <div className="grid grid-cols-7 gap-1 mb-2 text-center text-[11px] font-bold text-slate-400">
-                  <span className="text-rose-500/80">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span className="text-sky-600/80">土</span>
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: monthData.firstDay }).map((_, i) => (
-                    <div key={`empty-${i}`} className="h-16 bg-stone-50/70 rounded-lg" />
-                  ))}
-                  {Array.from({ length: monthData.days }).map((_, i) => {
-                    const dayNum = i + 1;
-                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                    const dow = new Date(year, month - 1, dayNum).getDay();
-                    const holidayName = getJapaneseHolidayName(dateStr);
-                    const isRedDay = dow === 0 || Boolean(holidayName);
-                    const isSat = dow === 6 && !holidayName;
-                    const isSelected = dateStr === selectedDate;
-                    const isToday = dateStr === todayStr;
-                    const currentDayEvents = events.filter(e => isEventOnDate(e, dateStr));
-                    const dayNet = currentDayEvents.reduce((sum, e) => {
-                      if (e.date !== dateStr) return sum;
-                      return sum + (e.isExpense ? -e.amount : e.amount);
-                    }, 0);
+              <div key={slideKey} className={`space-y-3 ${slideAnimClass}`}>
+                <div className="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-stone-50/70 border-b border-stone-100 text-[10px] text-slate-400">
+                    <span>‹ 前月へスワイプ</span>
+                    <span className="font-bold text-slate-500">左右スワイプで月切替</span>
+                    <span>次月へスワイプ ›</span>
+                  </div>
 
-                    return (
-                      <div
-                        key={dayNum}
-                        onClick={() => { setSelectedDate(dateStr); setViewMode('day'); }}
-                        className={`h-16 p-1 border rounded-xl flex flex-col justify-between cursor-pointer transition ${
-                          isSelected
-                            ? 'border-slate-700 bg-slate-100/70 ring-1 ring-slate-700/20'
-                            : 'border-stone-100 hover:bg-stone-50'
-                        } ${isToday ? 'bg-slate-50 font-bold' : ''}`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className={`text-[11px] ${
-                            isToday
-                              ? 'bg-slate-800 text-white rounded-full w-4 h-4 flex items-center justify-center'
-                              : isRedDay ? 'text-rose-600 font-bold' : isSat ? 'text-sky-700 font-bold' : 'text-slate-700'
-                          }`}>
-                            {dayNum}
-                          </span>
-                          {dayNet !== 0 && (
-                            <span className={`text-[8px] font-bold ${dayNet > 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-                              {dayNet > 0 ? `+${Math.round(dayNet/1000)}k` : `-${Math.round(Math.abs(dayNet)/1000)}k`}
-                            </span>
-                          )}
-                        </div>
-                        {holidayName && currentDayEvents.length === 0 && (
-                          <div className="text-[7px] text-rose-500/80 truncate leading-tight">{holidayName}</div>
-                        )}
-                        <div className="space-y-0.5 overflow-hidden">
-                          {currentDayEvents.slice(0, 2).map((ev) => {
-                            const isMultiDay = ev.endDate && ev.endDate > ev.date;
-                            const isShared = ev.isSharedImport;
-                            const isPayday = ev.isAutoPayday;
-                            return (
-                              <div
-                                key={ev.id}
-                                className="text-[8px] truncate px-1 py-0.5 rounded font-medium flex items-center leading-none"
-                                style={
-                                  isPayday
-                                    ? {
-                                        backgroundColor: '#ECFDF5',
-                                        color: '#065F46',
-                                        border: '1px solid #6EE7B7'
-                                      }
-                                    : isShared
-                                    ? {
-                                        backgroundColor: `${ev.color}18`,
-                                        color: ev.color,
-                                        borderLeft: `2.5px solid ${ev.color}`
-                                      }
-                                    : {
-                                        backgroundColor: ev.color || '#476C9B',
-                                        color: '#FFFFFF'
-                                      }
-                                }
+                  <div className="grid grid-cols-7 text-center text-[11px] font-bold py-2 border-b border-stone-100 bg-stone-50/40">
+                    <div className="text-rose-500">日</div>
+                    <div className="text-slate-600">月</div>
+                    <div className="text-slate-600">火</div>
+                    <div className="text-slate-600">水</div>
+                    <div className="text-slate-600">木</div>
+                    <div className="text-slate-600">金</div>
+                    <div className="text-sky-600">土</div>
+                  </div>
+
+                  <div className="grid grid-cols-7">
+                    {calendarDays.map((dateStr, idx) => {
+                      if (!dateStr) {
+                        return <div key={`empty_${idx}`} className="min-h-[78px] border-b border-r border-stone-100 bg-stone-50/30" />;
+                      }
+                      const dayNum = Number(dateStr.split('-')[2]);
+                      const isToday = dateStr === todayStr;
+                      const isSelected = dateStr === selectedDate;
+                      const cellEvents = getEventsForDate(dateStr);
+                      const cycleStatus = getDateCycleStatus(dateStr);
+
+                      let cellBg = 'bg-white';
+                      if (cycleStatus?.type === 'actual') cellBg = 'bg-rose-50/70';
+                      else if (cycleStatus?.type === 'predicted') cellBg = 'bg-pink-50/40';
+                      if (isSelected) cellBg = 'bg-amber-50/70';
+
+                      return (
+                        <div
+                          key={dateStr}
+                          onClick={() => {
+                            setSelectedDate(dateStr);
+                            setViewMode('day');
+                          }}
+                          className={`min-h-[78px] p-1 border-b border-r border-stone-100 cursor-pointer transition flex flex-col justify-between ${cellBg}`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${
+                                  isToday
+                                    ? 'bg-slate-800 text-white'
+                                    : idx % 7 === 0
+                                    ? 'text-rose-500'
+                                    : idx % 7 === 6
+                                    ? 'text-sky-600'
+                                    : 'text-slate-700'
+                                }`}
                               >
-                                <span className="truncate">{isMultiDay && ev.date !== dateStr ? `↳${ev.title}` : ev.title}</span>
-                              </div>
-                            );
-                          })}
-                          {currentDayEvents.length > 2 && (
-                            <div className="text-[7px] text-slate-400 text-right font-medium">+{currentDayEvents.length - 2}件</div>
-                          )}
+                                {dayNum}
+                              </span>
+                              {cycleStatus && (
+                                <span
+                                  className={`text-[8px] font-bold px-1 rounded ${
+                                    cycleStatus.type === 'actual'
+                                      ? 'bg-rose-500 text-white'
+                                      : 'border border-dashed border-rose-400 text-rose-600'
+                                  }`}
+                                >
+                                  {cycleStatus.type === 'actual' ? (cycleStatus.isStart ? '開始' : '🌸') : '予測'}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-1 space-y-0.5">
+                              {cellEvents.slice(0, 2).map(ev => (
+                                <div
+                                  key={ev.id}
+                                  className="text-[9px] leading-tight px-1 py-0.5 rounded truncate font-bold text-white"
+                                  style={{ backgroundColor: ev.color }}
+                                >
+                                  {ev.title}
+                                </div>
+                              ))}
+                              {cellEvents.length > 2 && (
+                                <div className="text-[9px] text-slate-400 font-bold pl-0.5">
+                                  +{cellEvents.length - 2}件
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="text-[10px] text-slate-400 text-center mt-2.5">
-                  左右スワイプで前月・翌月へ移動
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* 2. 日詳細 */}
+            {/* 2. 日詳細タブ */}
             {viewMode === 'day' && (
-              <div className="space-y-3">
-                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-stone-200/80 space-y-2.5">
-                  <div className="flex justify-between items-center">
-                    <button
-                      onClick={() => handleMoveDay(-1)}
-                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 rounded-lg text-xs font-bold text-slate-700 transition"
-                    >
-                      ◀ 前日
-                    </button>
-                    <div className="text-center">
-                      <h2 className="text-base font-bold text-slate-800">{selectedDate}</h2>
-                      {selectedHoliday && (
-                        <div className="text-[11px] font-bold text-rose-600">{selectedHoliday}</div>
-                      )}
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {dayStats.earned > 0 && (
-                          <>
-                            稼働給 <span className="text-emerald-700 font-bold">+{dayStats.earned.toLocaleString()}円</span>
-                            <span className="mx-1.5 text-stone-300">|</span>
-                          </>
-                        )}
-                        入金 <span className="text-emerald-700 font-bold">+{dayStats.income.toLocaleString()}円</span>
-                        <span className="mx-1.5 text-stone-300">|</span>
-                        支出 <span className="text-rose-600 font-bold">-{dayStats.expense.toLocaleString()}円</span>
-                      </div>
+              <div key={slideKey} className={`space-y-3 ${slideAnimClass}`}>
+                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-stone-200/80 flex items-center justify-between">
+                  <button
+                    onClick={() => changeSelectedDay(-1)}
+                    className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-bold text-slate-700"
+                  >
+                    ‹ 前日
+                  </button>
+                  <div className="text-center">
+                    <div className="text-sm font-bold text-slate-800">
+                      {selectedDate.replace(/-/g, '/')}
                     </div>
-                    <button
-                      onClick={() => handleMoveDay(1)}
-                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 rounded-lg text-xs font-bold text-slate-700 transition"
-                    >
-                      翌日 ▶
-                    </button>
+                    <div className="text-[10px] text-slate-400">左右スワイプで日付移動</div>
                   </div>
-                  <div className="flex justify-center border-t border-stone-100 pt-2">
-                    <button onClick={() => setViewMode('month')} className="text-[11px] text-slate-600 hover:text-slate-900 font-bold">
-                      月カレンダーに戻る
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => changeSelectedDay(1)}
+                    className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-bold text-slate-700"
+                  >
+                    翌日 ›
+                  </button>
                 </div>
 
+                {/* オプション：生理周期の記録・メモカード */}
+                {cycleConfig.enabled && !isViewingShared && (
+                  <div className="bg-rose-50/80 border border-rose-200/90 p-3.5 rounded-2xl space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-rose-900">🌸 生理周期ログ・体調メモ</span>
+                      {getDateCycleStatus(selectedDate)?.type === 'predicted' && (
+                        <span className="bg-white text-rose-700 border border-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          次回予測期間内
+                        </span>
+                      )}
+                    </div>
+
+                    {selectedDayCycleLog ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-[11px] text-rose-800">
+                          <span>開始日: <b>{selectedDayCycleLog.startDate}</b> 〜 終了日: <b>{selectedDayCycleLog.endDate || '未設定'}</b></span>
+                          <button
+                            type="button"
+                            onClick={handleSetCycleEndOnSelectedDate}
+                            className="bg-rose-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold"
+                          >
+                            この日を終了日にする
+                          </button>
+                        </div>
+                        <div className="flex space-x-1.5">
+                          <input
+                            type="text"
+                            placeholder="体調メモ（例：腹痛あり、薬服用、眠気）"
+                            value={cycleNoteInput}
+                            onChange={e => setCycleNoteInput(e.target.value)}
+                            className="flex-1 p-2 border border-rose-200 rounded-xl bg-white text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveCycleNote}
+                            className="bg-rose-700 text-white px-3 rounded-xl font-bold text-xs"
+                          >
+                            保存
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-rose-800">この日の記録はまだありません</span>
+                        <button
+                          type="button"
+                          onClick={handleStartCycleOnSelectedDate}
+                          className="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl font-bold text-xs"
+                        >
+                          ＋ 生理開始日として記録
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* その日の予定・収支一覧 */}
                 <div className="space-y-2.5">
                   {dayEvents.length === 0 ? (
                     <div className="text-center py-12 bg-white rounded-2xl border border-stone-200/80 text-slate-400 text-xs">
@@ -1507,6 +1522,7 @@
                       const isMultiDay = ev.endDate && ev.endDate > ev.date;
                       const isShared = ev.isSharedImport;
                       const isPayday = ev.isAutoPayday;
+                      const hasReminder = ev.reminder && ev.reminder !== 'none';
                       return (
                         <div
                           key={ev.id}
@@ -1516,18 +1532,18 @@
                               ? {
                                   backgroundColor: '#ECFDF5',
                                   border: '1px solid #6EE7B7',
-                                  borderLeft: `4px solid ${ev.color}`
+                                  borderLeft: `4px solid ${ev.color}`,
                                 }
                               : isShared
                               ? {
                                   backgroundColor: `${ev.color}0F`,
                                   border: `1px solid ${ev.color}40`,
-                                  borderLeft: `4px solid ${ev.color}`
+                                  borderLeft: `4px solid ${ev.color}`,
                                 }
                               : {
                                   backgroundColor: '#FFFFFF',
                                   border: '1px solid #E7E5E4',
-                                  borderLeft: `4px solid ${ev.color}`
+                                  borderLeft: `4px solid ${ev.color}`,
                                 }
                           }
                         >
@@ -1556,6 +1572,11 @@
                                   <span className={`font-bold text-sm ${ev.completed && !isPayday ? 'line-through text-slate-400' : 'text-slate-800'}`}>
                                     {ev.title}
                                   </span>
+                                  {hasReminder && (
+                                    <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+                                      🔔 {REMINDER_OPTIONS.find(r => r.value === ev.reminder)?.label}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mt-1">
                                   {isMultiDay && (
@@ -1620,10 +1641,9 @@
               </div>
             )}
 
-            {/* 3. 収支（3大マネー指標・予算アラート・カテゴリ別グラフ）タブ */}
+            {/* 3. 収支タブ */}
             {viewMode === 'finance' && (
               <div className="space-y-3.5">
-                {/* 3つの独立したマネー指標カード */}
                 {!isViewingShared && (
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-3">
                     <div className="flex justify-between items-center">
@@ -1637,7 +1657,6 @@
                     </div>
 
                     <div className="space-y-2.5 text-xs">
-                      {/* 1. 口座内金額 */}
                       <div className="bg-slate-800 text-white p-3.5 rounded-xl flex justify-between items-center">
                         <div>
                           <div className="text-slate-300 text-[11px] font-bold">① 口座内金額（現在の実残高）</div>
@@ -1651,11 +1670,13 @@
                       </div>
 
                       <div className="grid grid-cols-2 gap-2.5">
-                        {/* 2. 今月使える金額 */}
-                        <div className={`p-3 rounded-xl border ${
-                          isOverBudget ? 'bg-rose-50 border-rose-200' : isNearBudget ? 'bg-amber-50 border-amber-200' : 'bg-stone-50 border-stone-200/80'
-                        }`}>
-                          <div className="text-slate-500 text-[11px] font-bold">② 今月使える金額</div>
+                        <div
+                          onClick={jumpToBudgetSettings}
+                          className={`p-3 rounded-xl border cursor-pointer transition ${
+                            isOverBudget ? 'bg-rose-50 border-rose-200' : isNearBudget ? 'bg-amber-50 border-amber-200' : 'bg-stone-50 border-stone-200/80 hover:border-slate-400'
+                          }`}
+                        >
+                          <div className="text-slate-500 text-[11px] font-bold">② 今月使える金額 ⚙</div>
                           <div className={`text-lg font-bold mt-1 ${usableRemainingThisMonth >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>
                             {usableRemainingThisMonth >= 0 ? `${usableRemainingThisMonth.toLocaleString()}円` : `-${Math.abs(usableRemainingThisMonth).toLocaleString()}円`}
                           </div>
@@ -1664,7 +1685,6 @@
                           </div>
                         </div>
 
-                        {/* 3. 今月稼いだ金額 */}
                         <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/80">
                           <div className="text-emerald-900 text-[11px] font-bold">③ 今月稼いだ金額</div>
                           <div className="text-lg font-bold text-emerald-700 mt-1">
@@ -1679,7 +1699,6 @@
                   </div>
                 )}
 
-                {/* 今月の支出予算＆使いすぎ防止バー */}
                 {!isViewingShared && (
                   <div className={`p-4 rounded-2xl shadow-sm border space-y-2.5 transition ${
                     isOverBudget
@@ -1703,15 +1722,10 @@
                         )}
                       </div>
                       <button
-                        onClick={() => {
-                          const input = window.prompt('今月の支出予算上限（円）を入力してください', String(monthlyBudget));
-                          if (input !== null && !isNaN(Number(input)) && Number(input) >= 0) {
-                            setMonthlyBudget(Number(input));
-                          }
-                        }}
+                        onClick={jumpToBudgetSettings}
                         className="text-[11px] text-slate-600 hover:text-slate-900 bg-stone-100 px-2.5 py-1 rounded-lg font-bold"
                       >
-                        予算上限を変更
+                        予算上限を設定
                       </button>
                     </div>
 
@@ -1738,12 +1752,11 @@
                         </div>
                       </>
                     ) : (
-                      <div className="text-xs text-slate-500">予算上限が0円（未設定）です。「予算上限を変更」から目標額を設定できます。</div>
+                      <div className="text-xs text-slate-500">予算上限が0円（未設定）です。「予算上限を設定」から目標額を設定できます。</div>
                     )}
                   </div>
                 )}
 
-                {/* カテゴリ別支出ドーナツグラフ＆割合バー */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-2.5">
                   <div className="flex justify-between items-center">
                     <h2 className="text-sm font-bold text-slate-800">{month}月のカテゴリ別支出内訳</h2>
@@ -1755,7 +1768,6 @@
                   />
                 </div>
 
-                {/* 勤務先別の今月稼いだ金額＆翌月振込日 */}
                 {!isViewingShared && (jobEarnedBreakdown.length > 0 || monthlyStats.paydayThisMonth > 0) && (
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-3">
                     <h2 className="text-sm font-bold text-slate-800">バイト給与・振込スケジュール</h2>
@@ -1795,7 +1807,6 @@
                   </div>
                 )}
 
-                {/* 収支明細一覧 */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-800">{month}月の履歴一覧</h3>
@@ -1908,6 +1919,129 @@
             {/* 5. 設定タブ */}
             {viewMode === 'settings' && (
               <div className="space-y-3.5">
+                {/* 予算上限・口座初期残高設定（TOPの「使える金額」タップ時の遷移先） */}
+                <div
+                  id="budget-settings-card"
+                  className={`bg-white p-4 rounded-2xl shadow-sm border space-y-3 text-xs transition-all duration-300 ${
+                    highlightBudgetCard ? 'border-amber-500 ring-2 ring-amber-400/50 bg-amber-50/30' : 'border-stone-200/80'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-sm font-bold text-slate-800">今月使える予算上限・口座初期残高設定</h2>
+                    <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
+                      現在残り: {usableRemainingThisMonth.toLocaleString()}円
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] text-slate-500 font-bold mb-1">毎月の支出予算上限 (円)</label>
+                      <input
+                        type="number"
+                        value={monthlyBudget}
+                        onChange={e => setMonthlyBudget(Number(e.target.value))}
+                        className="w-full p-2.5 border border-stone-200 rounded-xl font-bold text-sm bg-stone-50 focus:bg-white focus:border-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 font-bold mb-1">開始時の口座残高 (円)</label>
+                      <input
+                        type="number"
+                        value={baseBalance}
+                        onChange={e => setBaseBalance(Number(e.target.value))}
+                        className="w-full p-2.5 border border-stone-200 rounded-xl font-bold text-sm bg-stone-50 focus:bg-white focus:border-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* リマインド通知設定 */}
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-sm font-bold text-slate-800">🔔 リマインド通知設定</h2>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      notifPermission === 'granted' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-slate-600'
+                    }`}>
+                      {notifPermission === 'granted' ? '通知許可済' : '未許可'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    予定登録時にリマインド時間を指定すると、指定時刻に通知でお知らせします。各予定の「通知」ボタンから標準カレンダー用(.ics)も出力できます。
+                  </p>
+                  {notifPermission !== 'granted' && (
+                    <button
+                      type="button"
+                      onClick={requestNotificationPermission}
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl font-bold transition"
+                    >
+                      ブラウザ通知を許可する
+                    </button>
+                  )}
+                </div>
+
+                {/* オプション：生理周期のメモと予測機能 */}
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-3 text-xs">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-800">🌸 生理周期のメモ・予測（オプション）</h2>
+                      <p className="text-[10px] text-slate-500 mt-0.5">ONにすると日詳細で記録・カレンダーに次回予測を表示します</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={cycleConfig.enabled}
+                        onChange={e => setCycleConfig({ ...cycleConfig, enabled: e.target.checked })}
+                      />
+                      <div className="w-10 h-5 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
+                    </label>
+                  </div>
+
+                  {cycleConfig.enabled && (
+                    <div className="pt-2 border-t border-stone-100 space-y-2.5">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 font-bold mb-1">基準周期日数（日）</label>
+                          <input
+                            type="number"
+                            min="20"
+                            max="45"
+                            value={cycleConfig.avgCycleDays}
+                            onChange={e => setCycleConfig({ ...cycleConfig, avgCycleDays: Number(e.target.value) || 28 })}
+                            className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 font-bold mb-1">平均生理期間（日）</label>
+                          <input
+                            type="number"
+                            min="2"
+                            max="10"
+                            value={cycleConfig.avgPeriodDays}
+                            onChange={e => setCycleConfig({ ...cycleConfig, avgPeriodDays: Number(e.target.value) || 5 })}
+                            className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50 font-bold"
+                          />
+                        </div>
+                      </div>
+                      {cycleLogs.length > 0 && (
+                        <div className="bg-rose-50/70 p-2.5 rounded-xl border border-rose-200/70 space-y-1">
+                          <div className="text-[10px] font-bold text-rose-900">記録履歴（自動平均周期: {cycleAnalysis.effectiveCycleDays}日）</div>
+                          {[...cycleLogs].sort((a, b) => b.startDate.localeCompare(a.startDate)).slice(0, 4).map(l => (
+                            <div key={l.id} className="flex justify-between items-center text-[11px] text-slate-700">
+                              <span>開始: {l.startDate} {l.endDate ? `〜 終了: ${l.endDate}` : '（未終了）'}</span>
+                              <button
+                                onClick={() => setCycleLogs(cycleLogs.filter(item => item.id !== l.id))}
+                                className="text-rose-600 text-[10px]"
+                              >
+                                削除
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* バイト先・給料振込日設定 */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80">
                   <h2 className="text-sm font-bold text-slate-800 mb-1">バイト先・給料振込日設定</h2>
@@ -1990,31 +2124,6 @@
                       </div>
                     </div>
                     <button onClick={addJob} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl font-bold mt-2 transition">勤務先を追加</button>
-                  </div>
-                </div>
-
-                {/* 予算上限・口座初期残高設定 */}
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-200/80 space-y-3 text-xs">
-                  <h2 className="text-sm font-bold text-slate-800">今月使える予算上限・口座初期残高設定</h2>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[10px] text-slate-500 font-bold mb-1">毎月の支出予算上限 (円)</label>
-                      <input
-                        type="number"
-                        value={monthlyBudget}
-                        onChange={e => setMonthlyBudget(Number(e.target.value))}
-                        className="w-full p-2.5 border border-stone-200 rounded-xl font-bold text-sm bg-stone-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-500 font-bold mb-1">開始時の口座残高 (円)</label>
-                      <input
-                        type="number"
-                        value={baseBalance}
-                        onChange={e => setBaseBalance(Number(e.target.value))}
-                        className="w-full p-2.5 border border-stone-200 rounded-xl font-bold text-sm bg-stone-50"
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -2196,7 +2305,7 @@
                 ⚡
               </button>
               <button
-                onClick={openCreateModal}
+                onClick={() => openCreateModal(viewMode === 'finance' ? 'finance' : 'schedule')}
                 className="w-14 h-14 bg-slate-800 hover:bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center text-2xl font-normal transition"
                 title="予定・収支を追加"
               >
@@ -2446,25 +2555,6 @@
                         </label>
                       </div>
                     </div>
-
-                    <div className="bg-white p-3 rounded-xl border border-stone-200/80">
-                      <div className="text-[10px] text-slate-400 mb-1.5">表示プレビュー（左ライン＋淡色背景＋バッジで区別）:</div>
-                      <div
-                        className="text-xs px-2.5 py-1.5 rounded-lg font-bold inline-flex items-center space-x-2"
-                        style={{
-                          backgroundColor: `${importCustomColor === 'ORIGINAL' ? '#3E7B67' : importCustomColor}14`,
-                          borderLeft: `4px solid ${importCustomColor === 'ORIGINAL' ? '#3E7B67' : importCustomColor}`
-                        }}
-                      >
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded text-white"
-                          style={{ backgroundColor: importCustomColor === 'ORIGINAL' ? '#3E7B67' : importCustomColor }}
-                        >
-                          {importBadgeLabel.trim() || '共有'}
-                        </span>
-                        <span className="text-slate-800">サンプル予定</span>
-                      </div>
-                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -2630,213 +2720,438 @@
             </div>
           )}
 
-          {/* 予定・収支 登録＆編集モーダル */}
+          {/* 3タブ分離型 登録＆編集モーダル（予定 / 収支 / バイト） */}
           {isModalOpen && (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center">
               <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
-                <div className="flex justify-between items-center border-b border-stone-100 pb-2.5">
+                <div className="flex justify-between items-center">
                   <h3 className="font-bold text-slate-800">
-                    {editingId ? '予定・収支の編集' : '予定・収支の追加'}
+                    {editingId ? '内容の編集' : '新規登録'}
                   </h3>
                   <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
                 </div>
 
-                {!editingId && templates.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold text-slate-400">⚡ 定型文から入力をセット:</div>
-                    <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1">
-                      {templates.map(tpl => (
-                        <button
-                          key={tpl.id}
-                          type="button"
-                          onClick={() => applyTemplateToForm(tpl)}
-                          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold whitespace-nowrap flex items-center space-x-1 border border-stone-200/70"
-                        >
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tpl.color }} />
-                          <span>{tpl.title} ({tpl.amount}円)</span>
-                        </button>
-                      ))}
-                    </div>
+                {/* モード切替セグメントタブ */}
+                <div className="grid grid-cols-3 gap-1 bg-stone-100 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => switchModalTab('schedule')}
+                    className={`py-2 rounded-lg transition ${
+                      modalTab === 'schedule' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    📅 予定
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchModalTab('finance')}
+                    className={`py-2 rounded-lg transition ${
+                      modalTab === 'finance' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    💰 収支
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchModalTab('shift')}
+                    className={`py-2 rounded-lg transition ${
+                      modalTab === 'shift' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    💼 バイト
+                  </button>
+                </div>
+
+                {/* 収支タブの時は定型文バーを表示 */}
+                {!editingId && modalTab === 'finance' && templates.length > 0 && (
+                  <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
+                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">⚡ 定型:</span>
+                    {templates.map(tpl => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => applyTemplateToForm(tpl)}
+                        className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold whitespace-nowrap flex items-center space-x-1 border border-stone-200/70"
+                      >
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tpl.color }} />
+                        <span>{tpl.title} ({tpl.amount}円)</span>
+                      </button>
+                    ))}
                   </div>
                 )}
 
                 <form onSubmit={handleSaveEvent} className="space-y-3 text-xs">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-slate-500 mb-1">開始日</label>
-                      <input
-                        type="date"
-                        value={newEvent.date}
-                        onChange={e => {
-                          const nextStart = e.target.value;
-                          const nextEnd = !newEvent.endDate || newEvent.endDate < nextStart ? nextStart : newEvent.endDate;
-                          setNewEvent({ ...newEvent, date: nextStart, endDate: nextEnd });
-                        }}
-                        className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 mb-1">終了日（日またぎ可）</label>
-                      <input
-                        type="date"
-                        value={newEvent.endDate || newEvent.date}
-                        min={newEvent.date}
-                        onChange={e => setNewEvent({ ...newEvent, endDate: e.target.value })}
-                        className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {!editingId && (
-                    <div>
-                      <label className="block text-slate-500 mb-1">繰り返し一括登録</label>
-                      <select value={repeatOption} onChange={e => setRepeatOption(e.target.value)} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50">
-                        <option value="none">今回のみ（1回）</option>
-                        <option value="weekly_4">毎週（4週間分）</option>
-                        <option value="monthly_3">毎月（3ヶ月分）</option>
-                      </select>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-2 bg-stone-100/80 p-2.5 rounded-xl border border-stone-200/70">
-                    <input
-                      type="checkbox"
-                      id="isShift"
-                      className="accent-slate-800"
-                      checked={newEvent.isShift}
-                      onChange={e => setNewEvent({ ...newEvent, isShift: e.target.checked, isAllDay: false })}
-                    />
-                    <label htmlFor="isShift" className="font-bold text-slate-800 cursor-pointer">アルバイトのシフトとして登録（翌月給料日に自動反映）</label>
-                  </div>
-
-                  {newEvent.isShift ? (
-                    jobs.length === 0 ? (
-                      <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl text-amber-900 space-y-2">
-                        <div>勤務先がまだ登録されていません。先に設定タブから勤務先（時給・振込日）を登録してください。</div>
-                        <button
-                          type="button"
-                          onClick={() => { setIsModalOpen(false); setViewMode('settings'); }}
-                          className="bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold"
-                        >
-                          設定画面へ移動する
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-slate-500 mb-1">勤務先を選択</label>
-                        <select value={newEvent.jobId} onChange={e => setNewEvent({ ...newEvent, jobId: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50" required>
-                          <option value="">選択してください</option>
-                          {jobs.map(j => (
-                            <option key={j.id} value={j.id}>
-                              {j.name} （時給:{j.hourlyWage}円 / 翌月{j.payDay === 31 ? '末日' : `${j.payDay || 25}日`}払）
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )
-                  ) : (
+                  {/* ================= TAB 1: 予定 ================= */}
+                  {modalTab === 'schedule' && (
                     <>
                       <div>
-                        <label className="block text-slate-500 mb-1">タイトル</label>
-                        <input type="text" placeholder="例：大学講義、1泊2日旅行、家賃引き落とし" value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} className="w-full p-2.5 border border-stone-200 rounded-xl bg-stone-50" required />
+                        <label className="block text-slate-500 font-bold mb-1">予定タイトル</label>
+                        <input
+                          type="text"
+                          placeholder="例：大学講義、美容院、1泊2日旅行"
+                          value={newEvent.title}
+                          onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                          className="w-full p-2.5 border border-stone-200 rounded-xl bg-stone-50 font-bold text-slate-800"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-500 mb-1">開始日</label>
+                          <input
+                            type="date"
+                            value={newEvent.date}
+                            onChange={e => {
+                              const nextStart = e.target.value;
+                              const nextEnd = !newEvent.endDate || newEvent.endDate < nextStart ? nextStart : newEvent.endDate;
+                              setNewEvent({ ...newEvent, date: nextStart, endDate: nextEnd });
+                            }}
+                            className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 mb-1">終了日</label>
+                          <input
+                            type="date"
+                            value={newEvent.endDate || newEvent.date}
+                            min={newEvent.date}
+                            onChange={e => setNewEvent({ ...newEvent, endDate: e.target.value })}
+                            className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between bg-stone-50 px-3 py-2 rounded-xl border border-stone-200/70">
+                        <label className="flex items-center space-x-2 cursor-pointer text-slate-700 font-bold">
+                          <input
+                            type="checkbox"
+                            className="accent-slate-800"
+                            checked={newEvent.isAllDay}
+                            onChange={e => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
+                          />
+                          <span>終日（時間指定なし）</span>
+                        </label>
+                        {!newEvent.isAllDay && (
+                          <div className="flex items-center space-x-1">
+                            <input type="time" value={newEvent.startTime} onChange={e => setNewEvent({ ...newEvent, startTime: e.target.value })} className="p-1 border border-stone-200 rounded-lg bg-white" />
+                            <span>〜</span>
+                            <input type="time" value={newEvent.endTime} onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })} className="p-1 border border-stone-200 rounded-lg bg-white" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-500 mb-1">🔔 リマインド通知</label>
+                          <select
+                            value={newEvent.reminder || 'none'}
+                            onChange={e => setNewEvent({ ...newEvent, reminder: e.target.value })}
+                            className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50 font-bold text-slate-700"
+                          >
+                            {REMINDER_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {!editingId && (
+                          <div>
+                            <label className="block text-slate-500 mb-1">繰り返し</label>
+                            <select value={repeatOption} onChange={e => setRepeatOption(e.target.value)} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50">
+                              <option value="none">今回のみ</option>
+                              <option value="weekly_4">毎週（4週間）</option>
+                              <option value="monthly_3">毎月（3ヶ月）</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
 
                       <div>
-                        <label className="block text-slate-500 mb-1">カテゴリ色分け（収支グラフに自動連動）</label>
-                        <div className="flex space-x-1.5 overflow-x-auto no-scrollbar py-1">
+                        <label className="block text-slate-500 mb-1">カラーラベル</label>
+                        <div className="flex space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
                           {COLOR_PALETTE.map(c => (
                             <button
                               type="button"
                               key={c.color}
                               onClick={() => setNewEvent({ ...newEvent, color: c.color })}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap flex items-center space-x-1 transition ${newEvent.color === c.color ? 'ring-2 ring-offset-1 ring-slate-700' : 'opacity-70 hover:opacity-100'}`}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap transition ${newEvent.color === c.color ? 'ring-2 ring-offset-1 ring-slate-700' : 'opacity-65 hover:opacity-100'}`}
                               style={{ backgroundColor: c.color }}
                             >
-                              <span>{c.name}</span>
+                              {c.name}
                             </button>
                           ))}
                         </div>
                       </div>
+
+                      {!showScheduleAmount ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowScheduleAmount(true)}
+                          className="text-[11px] text-slate-500 hover:text-slate-800 font-bold underline"
+                        >
+                          ＋ この予定に費用・金額も紐づける
+                        </button>
+                      ) : (
+                        <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/80 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-slate-600">紐づけ金額</span>
+                            <div className="flex space-x-3">
+                              <label className="flex items-center space-x-1">
+                                <input type="radio" name="sched_exp" checked={newEvent.isExpense} onChange={() => setNewEvent({ ...newEvent, isExpense: true })} />
+                                <span className="text-rose-600 font-bold">支出</span>
+                              </label>
+                              <label className="flex items-center space-x-1">
+                                <input type="radio" name="sched_exp" checked={!newEvent.isExpense} onChange={() => setNewEvent({ ...newEvent, isExpense: false })} />
+                                <span className="text-emerald-700 font-bold">収入</span>
+                              </label>
+                            </div>
+                          </div>
+                          <input
+                            type="number"
+                            placeholder="金額（円）"
+                            value={newEvent.amount || ''}
+                            onChange={e => setNewEvent({ ...newEvent, amount: Number(e.target.value) })}
+                            className="w-full p-2 border border-stone-200 rounded-lg bg-white font-bold"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-slate-500 mb-1">メモ</label>
+                        <textarea placeholder="持ち物や場所のメモ" value={newEvent.memo} onChange={e => setNewEvent({ ...newEvent, memo: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl h-14 bg-stone-50" />
+                      </div>
                     </>
                   )}
 
-                  {!newEvent.isShift && (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="isAllDay"
-                        className="accent-slate-800"
-                        checked={newEvent.isAllDay}
-                        onChange={e => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
-                      />
-                      <label htmlFor="isAllDay" className="text-slate-700 font-bold cursor-pointer">終日（時間指定なし）</label>
-                    </div>
-                  )}
-
-                  {!newEvent.isAllDay && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-slate-500 mb-1">開始時間</label>
-                        <input type="time" value={newEvent.startTime} onChange={e => setNewEvent({ ...newEvent, startTime: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50" />
+                  {/* ================= TAB 2: 収支 ================= */}
+                  {modalTab === 'finance' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNewEvent({ ...newEvent, isExpense: true })}
+                          className={`py-2.5 rounded-xl font-bold border transition ${
+                            newEvent.isExpense ? 'bg-rose-600 border-rose-600 text-white' : 'bg-stone-50 border-stone-200 text-slate-600'
+                          }`}
+                        >
+                          支出（使ったお金）
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewEvent({ ...newEvent, isExpense: false })}
+                          className={`py-2.5 rounded-xl font-bold border transition ${
+                            !newEvent.isExpense ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-stone-50 border-stone-200 text-slate-600'
+                          }`}
+                        >
+                          収入（入ったお金）
+                        </button>
                       </div>
-                      <div>
-                        <label className="block text-slate-500 mb-1">終了時間</label>
-                        <input type="time" value={newEvent.endTime} onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50" />
-                      </div>
-                    </div>
-                  )}
 
-                  {!newEvent.isShift && (
-                    <div className="space-y-2 border-t border-stone-100 pt-2.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-slate-600 font-bold">金額・予算試算</label>
-                        <div className="flex space-x-3">
-                          <label className="flex items-center space-x-1 cursor-pointer">
-                            <input type="radio" name="exp" className="accent-rose-600" checked={newEvent.isExpense} onChange={() => setNewEvent({ ...newEvent, isExpense: true })} />
-                            <span className="text-rose-600 font-bold">支出</span>
-                          </label>
-                          <label className="flex items-center space-x-1 cursor-pointer">
-                            <input type="radio" name="exp" className="accent-emerald-700" checked={!newEvent.isExpense} onChange={() => setNewEvent({ ...newEvent, isExpense: false })} />
-                            <span className="text-emerald-700 font-bold">収入</span>
-                          </label>
+                      <div>
+                        <label className="block text-slate-500 font-bold mb-1">金額 (円)</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={newEvent.amount || ''}
+                          onChange={e => setNewEvent({ ...newEvent, amount: Number(e.target.value) })}
+                          className="w-full p-3 border border-stone-200 rounded-xl font-bold text-lg bg-stone-50 text-right"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2">
+                          <label className="block text-slate-500 mb-1">項目・店名</label>
+                          <input
+                            type="text"
+                            placeholder="例：スーパー、電車代、お小遣い"
+                            value={newEvent.title}
+                            onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                            className="w-full p-2.5 border border-stone-200 rounded-xl bg-stone-50 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 mb-1">日付</label>
+                          <input
+                            type="date"
+                            value={newEvent.date}
+                            onChange={e => setNewEvent({ ...newEvent, date: e.target.value, endDate: e.target.value })}
+                            className="w-full p-2.5 border border-stone-200 rounded-xl bg-stone-50"
+                            required
+                          />
                         </div>
                       </div>
-                      <input type="number" placeholder="合計金額（0で金額なし）" value={newEvent.amount || ''} onChange={e => setNewEvent({ ...newEvent, amount: Number(e.target.value) })} className="w-full p-2.5 border border-stone-200 rounded-xl font-bold bg-stone-50" />
 
-                      <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/70 space-y-2">
-                        <div className="text-[10px] font-bold text-slate-500">内訳を追加して自動合計する（任意）</div>
-                        <div className="flex space-x-1.5">
-                          <input type="text" placeholder="項目（例：交通費）" value={subItemInput.name} onChange={e => setSubItemInput({ ...subItemInput, name: e.target.value })} className="flex-1 p-1.5 border border-stone-200 rounded-lg bg-white" />
-                          <input type="number" placeholder="金額" value={subItemInput.price} onChange={e => setSubItemInput({ ...subItemInput, price: e.target.value })} className="w-20 p-1.5 border border-stone-200 rounded-lg bg-white" />
-                          <button type="button" onClick={handleAddSubItem} className="bg-slate-700 text-white px-3 rounded-lg font-bold">追加</button>
+                      <div>
+                        <label className="block text-slate-500 mb-1">カテゴリ（円グラフに自動反映）</label>
+                        <div className="flex space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
+                          {COLOR_PALETTE.map(c => (
+                            <button
+                              type="button"
+                              key={c.color}
+                              onClick={() => setNewEvent({ ...newEvent, color: c.color })}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap transition ${newEvent.color === c.color ? 'ring-2 ring-offset-1 ring-slate-700' : 'opacity-65 hover:opacity-100'}`}
+                              style={{ backgroundColor: c.color }}
+                            >
+                              {c.name}
+                            </button>
+                          ))}
                         </div>
-                        {newEvent.subItems.length > 0 && (
-                          <div className="space-y-1 pt-1">
-                            {newEvent.subItems.map(sub => (
-                              <div key={sub.id} className="flex justify-between items-center text-[11px] bg-white px-2.5 py-1 rounded-lg border border-stone-200/70">
-                                <span>{sub.name}</span>
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-bold">{sub.price.toLocaleString()}円</span>
-                                  <button type="button" onClick={() => handleRemoveSubItem(sub.id)} className="text-rose-500">✕</button>
-                                </div>
+                      </div>
+
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setShowSubItemsPanel(!showSubItemsPanel)}
+                          className="text-[11px] text-slate-500 hover:text-slate-800 font-bold"
+                        >
+                          {showSubItemsPanel ? '▼ 内訳入力を閉じる' : '▶ レシート内訳を追加して自動合計する'}
+                        </button>
+                        {showSubItemsPanel && (
+                          <div className="mt-1.5 bg-stone-50 p-2.5 rounded-xl border border-stone-200/70 space-y-2">
+                            <div className="flex space-x-1.5">
+                              <input type="text" placeholder="品目" value={subItemInput.name} onChange={e => setSubItemInput({ ...subItemInput, name: e.target.value })} className="flex-1 p-1.5 border border-stone-200 rounded-lg bg-white" />
+                              <input type="number" placeholder="金額" value={subItemInput.price} onChange={e => setSubItemInput({ ...subItemInput, price: e.target.value })} className="w-20 p-1.5 border border-stone-200 rounded-lg bg-white" />
+                              <button type="button" onClick={handleAddSubItem} className="bg-slate-700 text-white px-3 rounded-lg font-bold">追加</button>
+                            </div>
+                            {newEvent.subItems.length > 0 && (
+                              <div className="space-y-1 pt-1">
+                                {newEvent.subItems.map(sub => (
+                                  <div key={sub.id} className="flex justify-between items-center text-[11px] bg-white px-2.5 py-1 rounded-lg border border-stone-200/70">
+                                    <span>{sub.name}</span>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="font-bold">{sub.price.toLocaleString()}円</span>
+                                      <button type="button" onClick={() => handleRemoveSubItem(sub.id)} className="text-rose-500">✕</button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
                         )}
                       </div>
-                    </div>
+
+                      {!editingId && (
+                        <div>
+                          <label className="block text-slate-500 mb-1">固定費の繰り返し登録</label>
+                          <select value={repeatOption} onChange={e => setRepeatOption(e.target.value)} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50">
+                            <option value="none">今回のみ（1回）</option>
+                            <option value="monthly_3">毎月同じ日に登録（3ヶ月分）</option>
+                          </select>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  <div>
-                    <label className="block text-slate-500 mb-1">メモ・持ち物リスト</label>
-                    <textarea placeholder="メモを残せます" value={newEvent.memo} onChange={e => setNewEvent({ ...newEvent, memo: e.target.value })} className="w-full p-2.5 border border-stone-200 rounded-xl h-14 bg-stone-50" />
-                  </div>
+                  {/* ================= TAB 3: バイト ================= */}
+                  {modalTab === 'shift' && (
+                    jobs.length === 0 ? (
+                      <div className="bg-amber-50/80 border border-amber-200 p-4 rounded-xl text-amber-900 space-y-2.5 text-center">
+                        <div className="font-bold">勤務先がまだ登録されていません</div>
+                        <div className="text-[11px]">設定タブから時給・交通費・翌月振込日を登録するとシフト計算が使えます。</div>
+                        <button
+                          type="button"
+                          onClick={() => { setIsModalOpen(false); setViewMode('settings'); }}
+                          className="bg-amber-700 text-white px-4 py-2 rounded-xl font-bold"
+                        >
+                          設定画面へ移動する
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-slate-500 font-bold mb-1">勤務先を選択</label>
+                          <select
+                            value={newEvent.jobId}
+                            onChange={e => setNewEvent({ ...newEvent, jobId: e.target.value })}
+                            className="w-full p-2.5 border border-stone-200 rounded-xl bg-stone-50 font-bold"
+                            required
+                          >
+                            <option value="">選択してください</option>
+                            {jobs.map(j => (
+                              <option key={j.id} value={j.id}>
+                                {j.name} （時給:{j.hourlyWage}円 / 翌月{j.payDay === 31 ? '末日' : `${j.payDay || 25}日`}払）
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                  <button type="submit" className="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl font-bold text-sm transition">
-                    {editingId ? '変更を保存する' : '登録する'}
-                  </button>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-slate-500 mb-1">勤務日</label>
+                            <input
+                              type="date"
+                              value={newEvent.date}
+                              onChange={e => setNewEvent({ ...newEvent, date: e.target.value, endDate: e.target.value })}
+                              className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">出勤</label>
+                            <input type="time" value={newEvent.startTime} onChange={e => setNewEvent({ ...newEvent, startTime: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">退勤</label>
+                            <input type="time" value={newEvent.endTime} onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50" />
+                          </div>
+                        </div>
+
+                        {shiftPreviewDetails && (
+                          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex justify-between items-center">
+                            <div>
+                              <div className="text-[10px] font-bold text-emerald-900">自動計算された見込給与</div>
+                              <div className="text-[10px] text-emerald-700 mt-0.5">
+                                実働 {shiftPreviewDetails.workHours}h
+                                {shiftPreviewDetails.breakMins > 0 ? `（休憩${shiftPreviewDetails.breakMins}分控除）` : ''}
+                                {shiftPreviewDetails.transport > 0 ? ` +交通費${shiftPreviewDetails.transport}円` : ''}
+                              </div>
+                            </div>
+                            <div className="text-base font-bold text-emerald-800">
+                              +{shiftPreviewDetails.pay.toLocaleString()}円
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-slate-500 mb-1">🔔 出勤リマインド</label>
+                            <select
+                              value={newEvent.reminder || 'none'}
+                              onChange={e => setNewEvent({ ...newEvent, reminder: e.target.value })}
+                              className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50"
+                            >
+                              {REMINDER_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {!editingId && (
+                            <div>
+                              <label className="block text-slate-500 mb-1">固定シフト繰り返し</label>
+                              <select value={repeatOption} onChange={e => setRepeatOption(e.target.value)} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50">
+                                <option value="none">今回のみ</option>
+                                <option value="weekly_4">毎週同じ曜日（4週分）</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-500 mb-1">メモ（任意）</label>
+                          <input type="text" placeholder="例：早番、ヘルプ出勤" value={newEvent.memo} onChange={e => setNewEvent({ ...newEvent, memo: e.target.value })} className="w-full p-2 border border-stone-200 rounded-xl bg-stone-50" />
+                        </div>
+                      </>
+                    )
+                  )}
+
+                  {!(modalTab === 'shift' && jobs.length === 0) && (
+                    <button type="submit" className="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl font-bold text-sm transition">
+                      {editingId ? '変更を保存する' : '登録する'}
+                    </button>
+                  )}
                 </form>
               </div>
             </div>
