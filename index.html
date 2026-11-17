@@ -7,9 +7,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>予定＆家計簿・バイト管理</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; background: #F5F5F4; }
@@ -40,8 +40,43 @@
 <body>
   <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+  <script>
+    (function () {
+      function showFatalBox(title, detail) {
+        var root = document.getElementById('root');
+        if (!root) return;
+        root.innerHTML =
+          '<div style="max-width:440px;margin:24px auto;padding:20px;background:#fff;border:2px solid #e11d48;border-radius:16px;font-family:sans-serif;font-size:13px;line-height:1.6;">' +
+          '<div style="font-weight:bold;color:#e11d48;font-size:15px;margin-bottom:8px;">⚠️ ' + title + '</div>' +
+          '<pre style="white-space:pre-wrap;word-break:break-all;background:#fff1f2;padding:12px;border-radius:10px;color:#881337;font-size:11px;">' + detail + '</pre>' +
+          '<button onclick="localStorage.removeItem(\'cal_budget_app_v3\');location.reload();" style="margin-top:12px;width:100%;padding:10px;background:#1e293b;color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">保存データを初期化して再読み込み</button>' +
+          '</div>';
+      }
+
+      window.addEventListener('error', function (e) {
+        showFatalBox('JavaScriptエラー検出', (e.message || 'Unknown error') + '\nLine: ' + (e.lineno || '?'));
+      });
+
+      window.addEventListener('unhandledrejection', function (e) {
+        showFatalBox('非同期処理エラー検出', String(e.reason || 'Unknown promise rejection'));
+      });
+
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && root.innerHTML.trim() === '') {
+          var status = [];
+          status.push('React: ' + (typeof window.React !== 'undefined' ? 'OK' : '未読込'));
+          status.push('ReactDOM: ' + (typeof window.ReactDOM !== 'undefined' ? 'OK' : '未読込'));
+          status.push('Babel: ' + (typeof window.Babel !== 'undefined' ? 'OK' : '未読込'));
+          showFatalBox(
+            '画面の描画が開始されませんでした',
+            'コードの結合ミス（括弧の過不足・重複）またはCDN読み込み失敗の可能性があります。\n\n【ライブラリ状態】\n' + status.join(' / ')
+          );
+        }
+      }, 3000);
+    })();
+  </script>
+const { useState, useEffect, useMemo, useRef } = React;
 
     const STORAGE_KEY = 'cal_budget_app_v3';
 
@@ -342,37 +377,8 @@
         Array.isArray(initialData.pinnedShiftKeys) ? initialData.pinnedShiftKeys : []
       );
       const [darkMode, setDarkMode] = useState(() => Boolean(initialData.darkMode));
-
-      const [toastMsg, setToastMsg] = useState('');
-      const [undoSnapshot, setUndoSnapshot] = useState(null);
-
-      const [isViewingShared, setIsViewingShared] = useState(false);
-      const [sharedEvents, setSharedEvents] = useState(null);
-      const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-      const [selectedImportIds, setSelectedImportIds] = useState([]);
-      const [importCustomColor, setImportCustomColor] = useState('ORIGINAL');
-      const [importBadgeLabel, setImportBadgeLabel] = useState('共有');
-      const [importIncludeMoney, setImportIncludeMoney] = useState(false);
-
-      const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-      const [shareOptions, setShareOptions] = useState({
-        scope: 'month',
-        hideMoney: true,
-        hideMemo: true,
-        maskTitle: false,
-      });
-      const [generatedShareUrl, setGeneratedShareUrl] = useState('');
-
-      const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
-      const [statementMethodLabel, setStatementMethodLabel] = useState('クレカ');
-      const [statementRawText, setStatementRawText] = useState('');
-      const [parsedStatements, setParsedStatements] = useState([]);
-
-      const [reconcileTarget, setReconcileTarget] = useState(null);
-      const [deleteConfirmModal, setDeleteConfirmModal] = useState(null);
-      const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
-
-      const [isModalOpen, setIsModalOpen] = useState(false);
+  <script type="text/babel" data-presets="react">
+    const [isModalOpen, setIsModalOpen] = useState(false);
       const [modalTab, setModalTab] = useState('schedule');
       const [editingId, setEditingId] = useState(null);
       const [editGroupScope, setEditGroupScope] = useState('single');
@@ -381,7 +387,6 @@
       const [selectedWeekdays, setSelectedWeekdays] = useState([1, 3, 5]);
       const [showScheduleAmount, setShowScheduleAmount] = useState(false);
       const [showSubItemsPanel, setShowSubItemsPanel] = useState(false);
-      const [subItemInput, setSubItemInput] = useState({ name: '', price: '' });
 
       const [newEvent, setNewEvent] = useState({
         title: '',
@@ -389,7 +394,7 @@
         endDate: todayStr,
         isAllDay: true,
         startTime: '10:00',
-        endTime: '11:00',
+        endTime: '12:00',
         color: '#3E7B67',
         amount: 0,
         isExpense: true,
@@ -401,15 +406,10 @@
         isPinned: false,
         groupId: null,
       });
+      const [subItemInput, setSubItemInput] = useState({ name: '', price: '' });
 
-      const [financeFilter, setFinanceFilter] = useState('all');
-      const [searchQuery, setSearchQuery] = useState('');
-      const [highlightBudgetCard, setHighlightBudgetCard] = useState(false);
-      const [cycleNoteInput, setCycleNoteInput] = useState('');
-      const [notifPermission, setNotifPermission] = useState(() =>
-        typeof Notification !== 'undefined' ? Notification.permission : 'default'
-      );
-
+      const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+      const [newTemplate, setNewTemplate] = useState({ title: '', amount: 0, color: '#C28540', isExpense: true });
       const [newSub, setNewSub] = useState({ name: '', amount: 0, dayOfMonth: 1, color: '#5B6270' });
       const [newJob, setNewJob] = useState({
         name: '',
@@ -420,18 +420,58 @@
         nightBonus: true,
         color: '#2E7D5B',
       });
-      const [newTemplate, setNewTemplate] = useState({ title: '', amount: 0, color: '#C28540', isExpense: true });
-      const [csvImportText, setCsvImportText] = useState('');
-      const [backupText, setBackupText] = useState('');
-      const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-      const isStandalone = useMemo(() => {
-        if (typeof window === 'undefined') return false;
-        return (
-          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-          window.navigator.standalone === true
-        );
-      }, []);
+      const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+      const [statementRawText, setStatementRawText] = useState('');
+      const [statementMethodLabel, setStatementMethodLabel] = useState('クレカ');
+      const [parsedStatements, setParsedStatements] = useState([]);
+
+      const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+      const [shareOptions, setShareOptions] = useState({
+        scope: 'month',
+        hideMoney: true,
+        hideMemo: true,
+        maskTitle: false,
+      });
+      const [generatedShareUrl, setGeneratedShareUrl] = useState('');
+
+      const [sharedEvents, setSharedEvents] = useState(null);
+      const [isViewingShared, setIsViewingShared] = useState(false);
+      const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+      const [selectedImportIds, setSelectedImportIds] = useState([]);
+      const [importCustomColor, setImportCustomColor] = useState('#3B6E8C');
+      const [importBadgeLabel, setImportBadgeLabel] = useState('共有');
+      const [importIncludeMoney, setImportIncludeMoney] = useState(false);
+
+      const [financeFilter, setFinanceFilter] = useState('all');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [backupText, setBackupText] = useState('');
+      const [csvImportText, setCsvImportText] = useState('');
+      const [toastMsg, setToastMsg] = useState('');
+      const [undoSnapshot, setUndoSnapshot] = useState(null);
+      const [deleteConfirmModal, setDeleteConfirmModal] = useState(null);
+      const [reconcileTarget, setReconcileTarget] = useState(null);
+      const [highlightBudgetCard, setHighlightBudgetCard] = useState(false);
+      const [cycleNoteInput, setCycleNoteInput] = useState('');
+      const [notifPermission, setNotifPermission] = useState(() =>
+        typeof Notification !== 'undefined' ? Notification.permission : 'default'
+      );
+      const [deferredPrompt, setDeferredPrompt] = useState(null);
+      const [isStandalone, setIsStandalone] = useState(false);
+
+      const showToast = (msg, withUndo = false) => {
+        if (!withUndo) setUndoSnapshot(null);
+        setToastMsg(msg);
+      };
+
+      useEffect(() => {
+        if (!toastMsg) return;
+        const timer = setTimeout(() => {
+          setToastMsg('');
+          setUndoSnapshot(null);
+        }, undoSnapshot ? 5000 : 2800);
+        return () => clearTimeout(timer);
+      }, [toastMsg, undoSnapshot]);
 
       useEffect(() => {
         try {
@@ -453,257 +493,304 @@
               darkMode,
             })
           );
-        } catch (err) {
-          console.error('Storage save failed:', err);
+        } catch (e) {
+          console.error('Save failed:', e);
         }
       }, [
-        events,
-        jobs,
-        monthlyBudget,
-        categoryBudgets,
-        baseBalance,
-        templates,
-        subscriptions,
-        paydayActuals,
-        cycleConfig,
-        cycleLogs,
-        hiddenShiftKeys,
-        pinnedShiftKeys,
-        darkMode,
+        events, jobs, monthlyBudget, categoryBudgets, baseBalance, templates,
+        subscriptions, paydayActuals, cycleConfig, cycleLogs,
+        hiddenShiftKeys, pinnedShiftKeys, darkMode
       ]);
 
       useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const shareParam = params.get('share');
-        if (shareParam) {
-          try {
-            const decoded = JSON.parse(decodeURIComponent(escape(atob(shareParam))));
-            if (Array.isArray(decoded)) {
-              const cleaned = decoded.map((e, i) => sanitizeEvent(e, i)).filter(Boolean);
-              setSharedEvents(cleaned);
-              setSelectedImportIds(cleaned.map((e) => e.id));
-              setIsViewingShared(true);
-            }
-          } catch (err) {
-            console.error('Share link parse failed:', err);
-          }
+        const standaloneMatch = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+        if (standaloneMatch || window.navigator.standalone === true) {
+          setIsStandalone(true);
         }
-
-        const addExp = Number(params.get('add_expense'));
-        if (addExp > 0) {
-          const rawTitle = params.get('title') || 'クイック支出';
-          const method = params.get('method');
-          const finalTitle = method ? `[${method}] ${rawTitle}` : rawTitle;
-          const ev = sanitizeEvent({
-            id: `url_exp_${Date.now()}`,
-            title: finalTitle,
-            date: todayStr,
-            endDate: todayStr,
-            isAllDay: true,
-            color: '#C28540',
-            amount: addExp,
-            isExpense: true,
-            completed: true,
-            memo: 'URLショートカット自動登録',
-          });
-          if (ev) {
-            setEvents((prev) => [ev, ...prev]);
-            setToastMsg(`「${finalTitle}」(${addExp.toLocaleString()}円)を自動登録しました`);
-          }
-          window.history.replaceState({}, '', window.location.pathname);
-        }
-
         const handleBeforeInstall = (e) => {
           e.preventDefault();
           setDeferredPrompt(e);
         };
         window.addEventListener('beforeinstallprompt', handleBeforeInstall);
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      }, []);
+
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+
+        const shareParam = params.get('share');
+        if (shareParam) {
+          try {
+            const decoded = JSON.parse(decodeURIComponent(escape(atob(shareParam))));
+            if (Array.isArray(decoded)) {
+              const sanitizedList = decoded.map((item, idx) => sanitizeEvent(item, idx)).filter(Boolean);
+              setSharedEvents(sanitizedList);
+              setSelectedImportIds(sanitizedList.map(item => item.id));
+              setIsViewingShared(true);
+              if (sanitizedList[0]?.date) {
+                setSelectedDate(sanitizedList[0].date);
+                const [y, m] = sanitizedList[0].date.split('-').map(Number);
+                if (y && m) setCurrentDate(new Date(y, m - 1, 1));
+              }
+            }
+          } catch (e) {
+            console.error('Share parse error:', e);
+          }
+        }
+
+        const addExpParam = params.get('add_expense');
+        if (addExpParam) {
+          const amt = Math.abs(Number(addExpParam)) || 0;
+          const titleParam = params.get('title') || 'キャッシュレス決済';
+          const methodParam = params.get('method') || '';
+          const dateParam = params.get('date') && /^\d{4}-\d{2}-\d{2}$/.test(params.get('date'))
+            ? params.get('date')
+            : todayStr;
+          const fullTitle = methodParam ? `[${methodParam}] ${titleParam}` : titleParam;
+
+          if (params.get('auto') === '1' && amt > 0) {
+            const quickEv = {
+              id: 'sc_auto_' + Date.now(),
+              title: fullTitle,
+              date: dateParam,
+              endDate: dateParam,
+              isAllDay: true,
+              startTime: '',
+              endTime: '',
+              color: '#3B6E8C',
+              amount: amt,
+              isExpense: true,
+              isShift: false,
+              completed: true,
+              memo: 'ショートカット自動連携',
+              subItems: [],
+              reminder: 'none',
+              isPinned: false,
+              groupId: null,
+            };
+            setEvents(prev => [quickEv, ...prev]);
+            showToast(`「${fullTitle}」(${amt.toLocaleString()}円)を自動記録しました`);
+            window.history.replaceState({}, '', window.location.pathname);
+          } else {
+            setModalTab('finance');
+            setNewEvent(prev => ({
+              ...prev,
+              title: fullTitle,
+              date: dateParam,
+              endDate: dateParam,
+              amount: amt,
+              isExpense: true,
+              color: '#3B6E8C',
+            }));
+            setIsModalOpen(true);
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }
       }, [todayStr]);
+
+      useEffect(() => {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const firedSet = new Set();
+        const interval = setInterval(() => {
+          const now = new Date();
+          events.forEach(ev => {
+            if (!ev.reminder || ev.reminder === 'none' || ev.completed) return;
+            const offsetMins = Number(ev.reminder);
+            if (isNaN(offsetMins)) return;
+            const timePart = ev.isAllDay || !ev.startTime ? '09:00' : ev.startTime;
+            const targetTime = new Date(`${ev.date}T${timePart}:00`);
+            if (isNaN(targetTime.getTime())) return;
+            const notifyAt = new Date(targetTime.getTime() - offsetMins * 60000);
+            const diff = now.getTime() - notifyAt.getTime();
+            const key = `${ev.id}_${ev.date}_${ev.reminder}`;
+            if (diff >= 0 && diff < 60000 && !firedSet.has(key)) {
+              firedSet.add(key);
+              try {
+                new Notification(`予定リマインド: ${ev.title}`, {
+                  body: `${ev.date} ${ev.isAllDay ? '終日' : ev.startTime}`,
+                });
+              } catch {}
+            }
+          });
+        }, 30000);
+        return () => clearInterval(interval);
+      }, [events]);
 
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
       const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
-
-      const prevMonthDate = new Date(year, month - 2, 1);
-      const prevYear = prevMonthDate.getFullYear();
-      const prevMonth = prevMonthDate.getMonth() + 1;
+      const prevYear = month === 1 ? year - 1 : year;
+      const prevMonth = month === 1 ? 12 : month - 1;
       const prevMonthPrefix = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
 
       const autoPaydayEvents = useMemo(() => {
-        const grouped = {};
-        events.forEach((ev) => {
-          if (!ev || !ev.isShift || !ev.jobId || typeof ev.date !== 'string') return;
+        if (isViewingShared) return [];
+        const groups = {};
+        events.forEach(ev => {
+          if (!ev.isShift || !ev.date || Number(ev.amount) <= 0) return;
           const [wy, wm] = ev.date.split('-').map(Number);
           if (!wy || !wm) return;
-          const key = `${ev.jobId}_${wy}_${wm}`;
-          if (!grouped[key]) {
-            grouped[key] = { jobId: ev.jobId, workYear: wy, workMonth: wm, total: 0 };
+          const job = jobs.find(j => j.id === ev.jobId);
+          const jobKey = job ? job.id : `legacy_${ev.title}`;
+          const jobName = job ? job.name : ev.title.replace(/^バイト[:：]\s*/, '') || 'バイト';
+          const payDay = job ? Number(job.payDay) || 25 : 25;
+          const color = job ? job.color : '#2E7D5B';
+          const groupKey = `${wy}-${String(wm).padStart(2, '0')}_${jobKey}`;
+
+          if (!groups[groupKey]) {
+            groups[groupKey] = {
+              groupKey,
+              workYear: wy,
+              workMonth: wm,
+              jobName,
+              payDay,
+              color,
+              calculatedTotal: 0,
+              shiftCount: 0,
+            };
           }
-          grouped[key].total += Number(ev.amount) || 0;
+          groups[groupKey].calculatedTotal += Number(ev.amount) || 0;
+          groups[groupKey].shiftCount += 1;
         });
 
-        return Object.entries(grouped).map(([key, item]) => {
-          const job = jobs.find((j) => j.id === item.jobId);
-          const jobName = job ? job.name : 'バイト';
-          const payDay = job ? job.payDay || 25 : 25;
-          const paydayDateStr = formatPaydayDate(item.workYear, item.workMonth, payDay);
-          const hasActual = Object.prototype.hasOwnProperty.call(paydayActuals, key);
-          const actualAmount = hasActual ? Number(paydayActuals[key]) : null;
-          const finalAmount = actualAmount !== null ? actualAmount : item.total;
-
+        return Object.values(groups).map(g => {
+          const paydayStr = formatPaydayDate(g.workYear, g.workMonth, g.payDay);
+          const hasActual = paydayActuals[g.groupKey] !== undefined && paydayActuals[g.groupKey] !== null;
+          const finalAmount = hasActual ? Number(paydayActuals[g.groupKey]) : g.calculatedTotal;
           return {
-            id: `auto_payday_${key}`,
-            paydayKey: key,
-            title: `${jobName} 給料日（${item.workMonth}月分）`,
-            date: paydayDateStr,
-            endDate: paydayDateStr,
+            id: `auto_payday_${g.groupKey}`,
+            paydayKey: g.groupKey,
+            title: `給料日（${g.jobName}・${g.workMonth}月分）`,
+            date: paydayStr,
+            endDate: paydayStr,
             isAllDay: true,
             startTime: '',
             endTime: '',
-            color: job?.color || '#2E7D5B',
+            color: g.color,
             amount: finalAmount,
-            calculatedAmount: item.total,
-            actualAmount,
+            calculatedAmount: g.calculatedTotal,
+            actualAmount: hasActual ? Number(paydayActuals[g.groupKey]) : null,
             isExpense: false,
             isShift: false,
             isAutoPayday: true,
-            completed: paydayDateStr <= todayStr,
-            memo: '',
+            completed: paydayStr <= todayStr,
+            memo: `${g.workYear}年${g.workMonth}月勤務分（${g.shiftCount}回稼働）の給与振込${hasActual ? '【実振込額照合済】' : '【計算見込】'}`,
             subItems: [],
             reminder: 'none',
             isPinned: false,
             groupId: null,
           };
         });
-      }, [events, jobs, paydayActuals, todayStr]);
+      }, [events, jobs, paydayActuals, todayStr, isViewingShared]);
 
-      const activeEvents = useMemo(() => {
-        if (isViewingShared && Array.isArray(sharedEvents)) return sharedEvents;
-        return [...events, ...autoPaydayEvents];
-      }, [isViewingShared, sharedEvents, events, autoPaydayEvents]);
+      const activeBaseEvents = isViewingShared ? (sharedEvents || []) : events;
+      const allDisplayEvents = useMemo(
+        () => [...activeBaseEvents, ...autoPaydayEvents],
+        [activeBaseEvents, autoPaydayEvents]
+      );
 
-      const calendarDays = useMemo(() => {
-        const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
-        const daysInMonth = new Date(year, month, 0).getDate();
-        const cells = [];
-        for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
-        for (let d = 1; d <= daysInMonth; d++) {
-          cells.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-        }
-        while (cells.length % 7 !== 0) cells.push(null);
-        return cells;
-      }, [year, month]);
-
-      const weekDaysList = useMemo(() => {
-        const base = parseDateLocal(selectedDate);
-        const dow = base.getDay();
-        const sunday = new Date(base.getFullYear(), base.getMonth(), base.getDate() - dow);
-        return Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i);
-          return getLocalDateStr(d);
-        });
-      }, [selectedDate]);
-
-      const dayEvents = useMemo(() => {
-        return activeEvents
-          .filter((ev) => {
-            if (!ev || typeof ev.date !== 'string') return false;
-            const end = ev.endDate || ev.date;
-            return ev.date <= selectedDate && selectedDate <= end;
-          })
-          .sort((a, b) => {
-            if (Boolean(a.isPinned) !== Boolean(b.isPinned)) return a.isPinned ? -1 : 1;
-            if (Boolean(a.isAllDay) !== Boolean(b.isAllDay)) return a.isAllDay ? -1 : 1;
-            return (a.startTime || '').localeCompare(b.startTime || '');
-          });
-      }, [activeEvents, selectedDate]);
+      const pinnedEventsList = useMemo(
+        () => activeBaseEvents.filter(ev => ev.isPinned && !ev.isAutoPayday),
+        [activeBaseEvents]
+      );
 
       const monthlyStats = useMemo(() => {
         let expense = 0;
-        let prevExpense = 0;
+        let otherIncome = 0;
         let earnedThisMonth = 0;
-        let prevEarned = 0;
         let paydayThisMonth = 0;
+        let prevExpense = 0;
+        let prevEarned = 0;
 
-        activeEvents.forEach((ev) => {
+        allDisplayEvents.forEach(ev => {
           if (!ev || typeof ev.date !== 'string') return;
           const amt = Number(ev.amount) || 0;
-          if (amt <= 0) return;
-
           if (ev.date.startsWith(monthPrefix)) {
-            if (ev.isExpense) expense += amt;
-            else if (ev.isShift) earnedThisMonth += amt;
-            else if (ev.isAutoPayday) paydayThisMonth += amt;
-          }
-          if (ev.date.startsWith(prevMonthPrefix)) {
-            if (ev.isExpense) prevExpense += amt;
-            else if (ev.isShift) prevEarned += amt;
+            if (ev.isExpense) {
+              expense += amt;
+            } else if (ev.isShift) {
+              earnedThisMonth += amt;
+            } else if (ev.isAutoPayday) {
+              paydayThisMonth += amt;
+            } else {
+              otherIncome += amt;
+            }
+          } else if (ev.date.startsWith(prevMonthPrefix)) {
+            if (ev.isExpense) {
+              prevExpense += amt;
+            } else if (ev.isShift) {
+              prevEarned += amt;
+            }
           }
         });
 
         return {
           expense,
-          prevExpense,
-          expenseDiff: expense - prevExpense,
+          otherIncome,
           earnedThisMonth,
-          prevEarned,
-          earnedDiff: earnedThisMonth - prevEarned,
           paydayThisMonth,
+          prevExpense,
+          prevEarned,
+          expenseDiff: expense - prevExpense,
+          earnedDiff: earnedThisMonth - prevEarned,
         };
-      }, [activeEvents, monthPrefix, prevMonthPrefix]);
-
-      const usableRemainingThisMonth = monthlyBudget - monthlyStats.expense;
-      const budgetPercent = monthlyBudget > 0 ? Math.min(100, Math.round((monthlyStats.expense / monthlyBudget) * 100)) : 0;
-      const isOverBudget = monthlyBudget > 0 && monthlyStats.expense > monthlyBudget;
-      const isNearBudget = monthlyBudget > 0 && !isOverBudget && monthlyStats.expense >= monthlyBudget * 0.8;
+      }, [allDisplayEvents, monthPrefix, prevMonthPrefix]);
 
       const accountStats = useMemo(() => {
         let currentDelta = 0;
         let projectedDelta = 0;
-        activeEvents.forEach((ev) => {
-          if (!ev || ev.isShift || typeof ev.date !== 'string') return;
+
+        allDisplayEvents.forEach(ev => {
+          if (!ev || ev.isShift) return;
           const amt = Number(ev.amount) || 0;
           if (amt <= 0) return;
           const signed = ev.isExpense ? -amt : amt;
           projectedDelta += signed;
-          if (ev.date <= todayStr || ev.completed) {
+          if (ev.completed || (ev.date && ev.date <= todayStr)) {
             currentDelta += signed;
           }
         });
+
         return {
-          currentAccountBalance: Number(baseBalance) + currentDelta,
-          projectedAccountBalance: Number(baseBalance) + projectedDelta,
+          currentAccountBalance: baseBalance + currentDelta,
+          projectedAccountBalance: baseBalance + projectedDelta,
         };
-      }, [activeEvents, baseBalance, todayStr]);
+      }, [allDisplayEvents, baseBalance, todayStr]);
+
+      const usableRemainingThisMonth = monthlyBudget - monthlyStats.expense;
+      const budgetPercent = monthlyBudget > 0 ? Math.min(100, Math.round((monthlyStats.expense / monthlyBudget) * 100)) : 0;
+      const isOverBudget = monthlyBudget > 0 && monthlyStats.expense > monthlyBudget;
+      const isNearBudget = monthlyBudget > 0 && !isOverBudget && budgetPercent >= 80;
 
       const yearlyAnalysis = useMemo(() => {
         const yearStr = String(year);
+        let totalAnnualIncome = 0;
         const monthlySeries = Array.from({ length: 12 }, (_, idx) => ({
           month: idx + 1,
           income: 0,
           expense: 0,
         }));
-        let totalAnnualIncome = 0;
 
-        activeEvents.forEach((ev) => {
+        allDisplayEvents.forEach(ev => {
           if (!ev || typeof ev.date !== 'string' || !ev.date.startsWith(yearStr)) return;
           const amt = Number(ev.amount) || 0;
-          if (amt <= 0) return;
           const mIdx = Number(ev.date.split('-')[1]) - 1;
           if (mIdx < 0 || mIdx > 11) return;
 
           if (ev.isExpense) {
             monthlySeries[mIdx].expense += amt;
-          } else if (!ev.isShift) {
+          } else if (ev.isShift) {
+            monthlySeries[mIdx].income += amt;
+            totalAnnualIncome += amt;
+          } else if (!ev.isAutoPayday) {
             monthlySeries[mIdx].income += amt;
             totalAnnualIncome += amt;
           }
         });
 
         const maxMonthlyVal = Math.max(
-          ...monthlySeries.map((m) => Math.max(m.income, m.expense)),
-          1
+          1,
+          ...monthlySeries.map(m => Math.max(m.income, m.expense))
         );
 
         return {
@@ -715,21 +802,42 @@
           monthlySeries,
           maxMonthlyVal,
         };
-      }, [activeEvents, year]);
+      }, [allDisplayEvents, year]);
+
+      const getCategoryNameByColor = (hexColor) => {
+        const found = COLOR_PALETTE.find(c => c.color.toLowerCase() === (hexColor || '').toLowerCase());
+        return found ? found.name : 'その他';
+      };
+
+      const categoryExpenseBreakdown = useMemo(() => {
+        const map = {};
+        let total = 0;
+        allDisplayEvents.forEach(ev => {
+          if (!ev || typeof ev.date !== 'string') return;
+          if (!ev.date.startsWith(monthPrefix) || !ev.isExpense) return;
+          const amt = Number(ev.amount) || 0;
+          if (amt <= 0) return;
+          const catName = getCategoryNameByColor(ev.color);
+          if (!map[catName]) {
+            map[catName] = { name: catName, color: ev.color || '#64748B', amount: 0 };
+          }
+          map[catName].amount += amt;
+          total += amt;
+        });
+
+        return Object.values(map)
+          .sort((a, b) => b.amount - a.amount)
+          .map(item => ({
+            ...item,
+            pct: total > 0 ? Math.round((item.amount / total) * 100) : 0,
+          }));
+      }, [allDisplayEvents, monthPrefix]);
 
       const categoryBudgetStatusList = useMemo(() => {
-        return COLOR_PALETTE.filter((c) => c.name !== '収入・バイト').map((cat) => {
+        return COLOR_PALETTE.filter(c => c.name !== '収入・バイト').map(cat => {
           const limit = Number(categoryBudgets[cat.name]) || 0;
-          const spent = activeEvents
-            .filter(
-              (ev) =>
-                ev &&
-                ev.isExpense &&
-                typeof ev.date === 'string' &&
-                ev.date.startsWith(monthPrefix) &&
-                ev.color === cat.color
-            )
-            .reduce((sum, ev) => sum + (Number(ev.amount) || 0), 0);
+          const found = categoryExpenseBreakdown.find(b => b.name === cat.name);
+          const spent = found ? found.amount : 0;
           const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
           return {
             name: cat.name,
@@ -740,128 +848,85 @@
             isOver: limit > 0 && spent > limit,
           };
         });
-      }, [activeEvents, categoryBudgets, monthPrefix]);
+      }, [categoryBudgets, categoryExpenseBreakdown]);
 
-      const categoryExpenseBreakdown = useMemo(() => {
-        const monthExpenses = activeEvents.filter(
-          (ev) =>
-            ev &&
-            ev.isExpense &&
-            typeof ev.date === 'string' &&
-            ev.date.startsWith(monthPrefix) &&
-            Number(ev.amount) > 0
-        );
-        const total = monthExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-        if (total <= 0) return [];
-
-        const map = {};
-        monthExpenses.forEach((ev) => {
-          const matched = COLOR_PALETTE.find((c) => c.color.toLowerCase() === (ev.color || '').toLowerCase());
-          const label = matched ? matched.name : 'その他';
-          const color = matched ? matched.color : ev.color || '#64748B';
-          if (!map[label]) map[label] = { name: label, color, amount: 0 };
-          map[label].amount += Number(ev.amount) || 0;
-        });
-
-        return Object.values(map)
-          .sort((a, b) => b.amount - a.amount)
-          .map((item) => ({
-            ...item,
-            pct: Math.max(1, Math.round((item.amount / total) * 100)),
-          }));
-      }, [activeEvents, monthPrefix]);
-
-      const jobEarnedBreakdown = useMemo(() => {
-        return jobs
-          .map((job) => {
-            const shifts = events.filter(
-              (ev) =>
-                ev &&
-                ev.isShift &&
-                ev.jobId === job.id &&
-                typeof ev.date === 'string' &&
-                ev.date.startsWith(monthPrefix)
-            );
-            const totalPay = shifts.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-            const totalHours = shifts.reduce((s, e) => s + (Number(e.shiftMeta?.workHours) || 0), 0);
-            return {
-              id: job.id,
-              name: job.name,
-              color: job.color || '#2E7D5B',
-              payDay: job.payDay || 25,
-              count: shifts.length,
-              totalHours: Math.round(totalHours * 10) / 10,
-              totalPay,
-              paydayStr: formatPaydayDate(year, month, job.payDay || 25),
-            };
-          })
-          .filter((item) => item.count > 0);
-      }, [jobs, events, monthPrefix, year, month]);
-
-      const filteredFinanceList = useMemo(() => {
-        return activeEvents
-          .filter((ev) => {
-            if (!ev || typeof ev.date !== 'string' || !ev.date.startsWith(monthPrefix)) return false;
-            if ((Number(ev.amount) || 0) <= 0) return false;
-            if (financeFilter === 'income') return !ev.isExpense;
-            if (financeFilter === 'expense') return ev.isExpense;
-            return true;
-          })
-          .sort((a, b) => b.date.localeCompare(a.date));
-      }, [activeEvents, monthPrefix, financeFilter]);
-
-      const searchResults = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
-        if (!q) return [];
-        return activeEvents
-          .filter((ev) => {
-            if (!ev) return false;
-            const inTitle = (ev.title || '').toLowerCase().includes(q);
-            const inMemo = (ev.memo || '').toLowerCase().includes(q);
-            const inBadge = (ev.sharedBadge || '').toLowerCase().includes(q);
-            const inSubs = Array.isArray(ev.subItems) && ev.subItems.some((s) => (s.name || '').toLowerCase().includes(q));
-            return inTitle || inMemo || inBadge || inSubs;
-          })
-          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      }, [activeEvents, searchQuery]);
-
-      const pinnedEventsList = useMemo(() => {
-        return events.filter((ev) => ev && ev.isPinned && !ev.isAutoPayday);
-      }, [events]);
+      const monthlySubTotal = useMemo(
+        () => subscriptions.reduce((sum, s) => sum + (Number(s.amount) || 0), 0),
+        [subscriptions]
+      );
 
       const shiftHistoryPatterns = useMemo(() => {
         const map = {};
-        events.forEach((ev) => {
-          if (!ev || !ev.isShift || !ev.jobId || !ev.startTime || !ev.endTime) return;
-          const job = jobs.find((j) => j.id === ev.jobId);
-          if (!job) return;
-          const key = `${ev.jobId}_${ev.startTime}_${ev.endTime}`;
+        events.forEach(ev => {
+          if (!ev || !ev.isShift || !ev.startTime || !ev.endTime) return;
+          const job = jobs.find(j => j.id === ev.jobId);
+          const jobName = job ? job.name : ev.title.replace(/^バイト[:：]\s*/, '') || 'バイト';
+          const key = `${ev.jobId || jobName}_${ev.startTime}_${ev.endTime}`;
           if (hiddenShiftKeys.includes(key)) return;
+
           if (!map[key]) {
-            const calc = calcShiftDetails(ev.startTime, ev.endTime, job);
+            const calc = job ? calcShiftDetails(ev.startTime, ev.endTime, job) : null;
             map[key] = {
               key,
-              jobId: job.id,
-              jobName: job.name,
-              color: job.color || '#2E7D5B',
+              jobId: ev.jobId || '',
+              jobName,
               startTime: ev.startTime,
               endTime: ev.endTime,
-              pay: calc.pay,
+              color: job ? job.color : (ev.color || '#2E7D5B'),
+              pay: calc ? calc.pay : (Number(ev.amount) || 0),
               count: 0,
+              latestDate: ev.date || '',
               isPinned: pinnedShiftKeys.includes(key),
             };
           }
           map[key].count += 1;
+          if ((ev.date || '') > map[key].latestDate) {
+            map[key].latestDate = ev.date;
+          }
         });
 
-        return Object.values(map).sort((a, b) => {
-          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-          return b.count - a.count;
-        });
+        return Object.values(map)
+          .sort((a, b) => {
+            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+            if (b.count !== a.count) return b.count - a.count;
+            return b.latestDate.localeCompare(a.latestDate);
+          })
+          .slice(0, 8);
       }, [events, jobs, hiddenShiftKeys, pinnedShiftKeys]);
+    const jobEarnedBreakdown = useMemo(() => {
+        if (isViewingShared) return [];
+        const map = {};
+        events.forEach(ev => {
+          if (!ev || !ev.isShift || !ev.date || !ev.date.startsWith(monthPrefix)) return;
+          const job = jobs.find(j => j.id === ev.jobId);
+          const id = job ? job.id : `legacy_${ev.title}`;
+          const name = job ? job.name : ev.title.replace(/^バイト[:：]\s*/, '') || 'バイト';
+          const color = job ? job.color : (ev.color || '#2E7D5B');
+          const payDay = job ? Number(job.payDay) || 25 : 25;
+          if (!map[id]) {
+            map[id] = {
+              id,
+              name,
+              color,
+              payDay,
+              paydayStr: formatPaydayDate(year, month, payDay),
+              count: 0,
+              totalHours: 0,
+              totalPay: 0,
+            };
+          }
+          map[id].count += 1;
+          map[id].totalHours = Math.round((map[id].totalHours + (ev.shiftMeta?.workHours || 0)) * 100) / 100;
+          map[id].totalPay += Number(ev.amount) || 0;
+        });
+        return Object.values(map);
+      }, [events, jobs, monthPrefix, year, month, isViewingShared]);
 
       const cycleAnalysis = useMemo(() => {
-        const sorted = [...cycleLogs].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+        const sorted = [...cycleLogs]
+          .filter(l => l && l.startDate)
+          .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
         let effectiveCycleDays = Number(cycleConfig.avgCycleDays) || 28;
         if (sorted.length >= 2) {
           const diffs = [];
@@ -872,140 +937,191 @@
             if (diffDays >= 18 && diffDays <= 50) diffs.push(diffDays);
           }
           if (diffs.length > 0) {
-            effectiveCycleDays = Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length);
+            effectiveCycleDays = Math.round(diffs.reduce((s, v) => s + v, 0) / diffs.length);
           }
         }
+
+        const periodDays = Number(cycleConfig.avgPeriodDays) || 5;
+        const actualRanges = sorted.map(l => {
+          const start = l.startDate;
+          let end = l.endDate;
+          if (!end) {
+            const d = parseDateLocal(start);
+            d.setDate(d.getDate() + periodDays - 1);
+            end = getLocalDateStr(d);
+          }
+          return { ...l, start, end };
+        });
 
         const predictedRanges = [];
         if (cycleConfig.enabled && sorted.length > 0) {
           const lastStart = parseDateLocal(sorted[sorted.length - 1].startDate);
-          const periodLen = Number(cycleConfig.avgPeriodDays) || 5;
-          for (let k = 1; k <= 3; k++) {
-            const predStart = new Date(
-              lastStart.getFullYear(),
-              lastStart.getMonth(),
-              lastStart.getDate() + effectiveCycleDays * k
-            );
-            const predEnd = new Date(
-              predStart.getFullYear(),
-              predStart.getMonth(),
-              predStart.getDate() + periodLen - 1
-            );
+          for (let k = 1; k <= 6; k++) {
+            const pStart = new Date(lastStart);
+            pStart.setDate(pStart.getDate() + effectiveCycleDays * k);
+            const pEnd = new Date(pStart);
+            pEnd.setDate(pEnd.getDate() + periodDays - 1);
             predictedRanges.push({
-              start: getLocalDateStr(predStart),
-              end: getLocalDateStr(predEnd),
+              start: getLocalDateStr(pStart),
+              end: getLocalDateStr(pEnd),
             });
           }
         }
 
-        return { effectiveCycleDays, predictedRanges };
+        return { effectiveCycleDays, actualRanges, predictedRanges };
       }, [cycleLogs, cycleConfig]);
 
-      const selectedDayCycleLog = useMemo(() => {
-        const periodLen = Number(cycleConfig.avgPeriodDays) || 5;
-        return cycleLogs.find((log) => {
-          if (!log || !log.startDate) return false;
-          if (log.endDate) return log.startDate <= selectedDate && selectedDate <= log.endDate;
-          const s = parseDateLocal(log.startDate);
-          const autoEnd = getLocalDateStr(new Date(s.getFullYear(), s.getMonth(), s.getDate() + periodLen - 1));
-          return log.startDate <= selectedDate && selectedDate <= autoEnd;
-        }) || null;
-      }, [cycleLogs, selectedDate, cycleConfig.avgPeriodDays]);
-
-      const monthlySubTotal = useMemo(() => {
-        return subscriptions.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
-      }, [subscriptions]);
-
-      const shiftPreviewDetails = useMemo(() => {
-        if (!newEvent.jobId) return null;
-        const job = jobs.find((j) => j.id === newEvent.jobId);
-        if (!job) return null;
-        return calcShiftDetails(newEvent.startTime, newEvent.endTime, job);
-      }, [newEvent.jobId, newEvent.startTime, newEvent.endTime, jobs]);
-
-      const bulkWeekdayDates = useMemo(() => {
-        const targetY = bulkTargetMonth === 'next' && month === 12 ? year + 1 : year;
-        const targetM = bulkTargetMonth === 'next' ? (month === 12 ? 1 : month + 1) : month;
-        const daysInTarget = new Date(targetY, targetM, 0).getDate();
-        const list = [];
-        for (let d = 1; d <= daysInTarget; d++) {
-          const dt = new Date(targetY, targetM - 1, d);
-          if (selectedWeekdays.includes(dt.getDay())) {
-            list.push(getLocalDateStr(dt));
+      const getDateCycleStatus = (dateStr) => {
+        if (!cycleConfig.enabled || isViewingShared) return null;
+        for (const r of cycleAnalysis.actualRanges) {
+          if (dateStr >= r.start && dateStr <= r.end) {
+            return { type: 'actual', isStart: dateStr === r.start };
           }
         }
-        return list;
-      }, [bulkTargetMonth, year, month, selectedWeekdays]);
-
-      // ====== ここまでが 1/3 です。続けて 2/3 をこの直下に貼り付けてください ======
-    const toastTimerRef = useRef(null);
-
-      const showToast = (msg, keepUndo = false) => {
-        if (!keepUndo) setUndoSnapshot(null);
-        setToastMsg(msg);
-        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-        toastTimerRef.current = setTimeout(() => {
-          setToastMsg('');
-        }, 4200);
+        for (const p of cycleAnalysis.predictedRanges) {
+          if (dateStr >= p.start && dateStr <= p.end) {
+            return { type: 'predicted', isStart: dateStr === p.start };
+          }
+        }
+        return null;
       };
+
+      const selectedDayCycleLog = useMemo(() => {
+        if (!cycleConfig.enabled) return null;
+        return cycleAnalysis.actualRanges.find(r => selectedDate >= r.start && selectedDate <= r.end) || null;
+      }, [cycleConfig.enabled, cycleAnalysis, selectedDate]);
 
       useEffect(() => {
         setCycleNoteInput(selectedDayCycleLog ? (selectedDayCycleLog.note || '') : '');
       }, [selectedDayCycleLog]);
 
-      useEffect(() => {
-        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-        const timer = setInterval(() => {
-          const now = new Date();
-          const nowStr = getLocalDateStr(now);
-          const nowMins = now.getHours() * 60 + now.getMinutes();
-          events.forEach((ev) => {
-            if (!ev || ev.completed || !ev.reminder || ev.reminder === 'none' || ev.isAllDay || !ev.startTime) return;
-            if (ev.date !== nowStr) return;
-            const [h, m] = ev.startTime.split(':').map(Number);
-            if (isNaN(h) || isNaN(m)) return;
-            const targetMins = h * 60 + m - Number(ev.reminder);
-            if (nowMins === targetMins) {
-              try {
-                new Notification(`予定リマインド: ${ev.title}`, {
-                  body: `${ev.startTime} 開始予定です`,
-                });
-              } catch (e) {
-                console.warn('Notification error:', e);
-              }
-            }
-          });
-        }, 60000);
-        return () => clearInterval(timer);
-      }, [events]);
-
-      const requestNotificationPermission = async () => {
-        if (typeof Notification === 'undefined') {
-          showToast('このブラウザは通知機能に対応していません');
-          return;
-        }
-        try {
-          const res = await Notification.requestPermission();
-          setNotifPermission(res);
-          showToast(res === 'granted' ? '通知を許可しました' : '通知がブロックされました');
-        } catch {
-          showToast('通知設定を変更できませんでした');
-        }
+      const handleStartCycleOnSelectedDate = () => {
+        const newLog = {
+          id: 'cyc_' + Date.now(),
+          startDate: selectedDate,
+          endDate: '',
+          note: '',
+        };
+        setCycleLogs(prev => [...prev, newLog]);
+        showToast(`${selectedDate} を生理開始日として記録しました`);
       };
+
+      const handleSetCycleEndOnSelectedDate = () => {
+        if (!selectedDayCycleLog) return;
+        setCycleLogs(prev =>
+          prev.map(l => (l.id === selectedDayCycleLog.id ? { ...l, endDate: selectedDate } : l))
+        );
+        showToast(`${selectedDate} を終了日として更新しました`);
+      };
+
+      const handleSaveCycleNote = () => {
+        if (!selectedDayCycleLog) return;
+        setCycleLogs(prev =>
+          prev.map(l => (l.id === selectedDayCycleLog.id ? { ...l, note: cycleNoteInput } : l))
+        );
+        showToast('体調メモを保存しました');
+      };
+
+      const calendarDays = useMemo(() => {
+        const firstDay = new Date(year, month - 1, 1).getDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const cells = [];
+        for (let i = 0; i < firstDay; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) {
+          cells.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+        }
+        return cells;
+      }, [year, month]);
+
+      const weekDaysList = useMemo(() => {
+        const base = parseDateLocal(selectedDate);
+        const dayOfWeek = base.getDay();
+        const sunday = new Date(base);
+        sunday.setDate(base.getDate() - dayOfWeek);
+        return Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(sunday);
+          d.setDate(sunday.getDate() + i);
+          return getLocalDateStr(d);
+        });
+      }, [selectedDate]);
+
+      const getEventsForDate = (dateStr) => {
+        return allDisplayEvents
+          .filter(ev => {
+            if (!ev || !ev.date) return false;
+            const endD = ev.endDate || ev.date;
+            return ev.date <= dateStr && endD >= dateStr;
+          })
+          .sort((a, b) => {
+            if (a.isAllDay !== b.isAllDay) return a.isAllDay ? -1 : 1;
+            return (a.startTime || '').localeCompare(b.startTime || '');
+          });
+      };
+
+      const dayEvents = useMemo(() => getEventsForDate(selectedDate), [allDisplayEvents, selectedDate]);
+
+      const filteredFinanceList = useMemo(() => {
+        return allDisplayEvents
+          .filter(ev => {
+            if (!ev || !ev.date || !ev.date.startsWith(monthPrefix)) return false;
+            if ((Number(ev.amount) || 0) <= 0 && !ev.isShift) return false;
+            if (financeFilter === 'expense') return ev.isExpense;
+            if (financeFilter === 'income') return !ev.isExpense;
+            return true;
+          })
+          .sort((a, b) => b.date.localeCompare(a.date));
+      }, [allDisplayEvents, monthPrefix, financeFilter]);
+
+      const searchResults = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return [];
+        return allDisplayEvents
+          .filter(ev => {
+            if (!ev) return false;
+            const inTitle = (ev.title || '').toLowerCase().includes(q);
+            const inMemo = (ev.memo || '').toLowerCase().includes(q);
+            const inBadge = (ev.sharedBadge || '').toLowerCase().includes(q);
+            const inSub = Array.isArray(ev.subItems) && ev.subItems.some(s => (s.name || '').toLowerCase().includes(q));
+            return inTitle || inMemo || inBadge || inSub;
+          })
+          .sort((a, b) => b.date.localeCompare(a.date));
+      }, [allDisplayEvents, searchQuery]);
+
+      const shiftPreviewDetails = useMemo(() => {
+        if (modalTab !== 'shift' || !newEvent.jobId) return null;
+        const job = jobs.find(j => j.id === newEvent.jobId);
+        if (!job) return null;
+        return calcShiftDetails(newEvent.startTime, newEvent.endTime, job);
+      }, [modalTab, newEvent.jobId, newEvent.startTime, newEvent.endTime, jobs]);
+
+      const bulkWeekdayDates = useMemo(() => {
+        const targetYear = bulkTargetMonth === 'next' ? (month === 12 ? year + 1 : year) : year;
+        const targetMonth = bulkTargetMonth === 'next' ? (month === 12 ? 1 : month + 1) : month;
+        const daysInTarget = new Date(targetYear, targetMonth, 0).getDate();
+        const dates = [];
+        for (let d = 1; d <= daysInTarget; d++) {
+          const dt = new Date(targetYear, targetMonth - 1, d);
+          if (selectedWeekdays.includes(dt.getDay())) {
+            dates.push(getLocalDateStr(dt));
+          }
+        }
+        return dates;
+      }, [bulkTargetMonth, year, month, selectedWeekdays]);
 
       const changeMonth = (delta) => {
         setSlideAnimClass(delta > 0 ? 'slide-left' : 'slide-right');
-        setSlideKey((k) => k + 1);
-        setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+        setSlideKey(k => k + 1);
+        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
       };
 
       const changeSelectedDay = (delta) => {
         setSlideAnimClass(delta > 0 ? 'slide-left' : 'slide-right');
-        setSlideKey((k) => k + 1);
-        const base = parseDateLocal(selectedDate);
-        const next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + delta);
-        setSelectedDate(getLocalDateStr(next));
-        setCurrentDate(new Date(next.getFullYear(), next.getMonth(), 1));
+        setSlideKey(k => k + 1);
+        const cur = parseDateLocal(selectedDate);
+        cur.setDate(cur.getDate() + delta);
+        const nextStr = getLocalDateStr(cur);
+        setSelectedDate(nextStr);
+        setCurrentDate(new Date(cur.getFullYear(), cur.getMonth(), 1));
       };
 
       const handleTouchStart = (e) => {
@@ -1015,10 +1131,12 @@
       };
 
       const handleTouchEnd = (e) => {
-        if (touchStartXRef.current === null || !e.changedTouches || e.changedTouches.length === 0) return;
-        const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+        if (touchStartXRef.current === null) return;
+        const endX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
+        if (endX === null) return;
+        const diffX = endX - touchStartXRef.current;
         touchStartXRef.current = null;
-        if (Math.abs(diffX) < 60) return;
+        if (Math.abs(diffX) < 55) return;
 
         if (viewMode === 'month') {
           changeMonth(diffX < 0 ? 1 : -1);
@@ -1035,216 +1153,38 @@
         setTimeout(() => {
           const el = document.getElementById('budget-settings-card');
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-        setTimeout(() => setHighlightBudgetCard(false), 2200);
+        }, 120);
+        setTimeout(() => setHighlightBudgetCard(false), 1800);
       };
 
-      const getEventsForDate = (dateStr) => {
-        return activeEvents
-          .filter((ev) => {
-            if (!ev || typeof ev.date !== 'string') return false;
-            const end = ev.endDate || ev.date;
-            return ev.date <= dateStr && dateStr <= end;
-          })
-          .sort((a, b) => {
-            if (Boolean(a.isPinned) !== Boolean(b.isPinned)) return a.isPinned ? -1 : 1;
-            if (Boolean(a.isAllDay) !== Boolean(b.isAllDay)) return a.isAllDay ? -1 : 1;
-            return (a.startTime || '').localeCompare(b.startTime || '');
-          });
-      };
-
-      const getDateCycleStatus = (dateStr) => {
-        if (!cycleConfig.enabled) return null;
-        const periodLen = Number(cycleConfig.avgPeriodDays) || 5;
-        for (const log of cycleLogs) {
-          if (!log || !log.startDate) continue;
-          const endStr = log.endDate
-            ? log.endDate
-            : (() => {
-                const s = parseDateLocal(log.startDate);
-                return getLocalDateStr(new Date(s.getFullYear(), s.getMonth(), s.getDate() + periodLen - 1));
-              })();
-          if (log.startDate <= dateStr && dateStr <= endStr) {
-            return { type: 'actual', isStart: log.startDate === dateStr, log };
-          }
-        }
-        for (const rng of cycleAnalysis.predictedRanges) {
-          if (rng.start <= dateStr && dateStr <= rng.end) {
-            return { type: 'predicted' };
-          }
-        }
-        return null;
-      };
-
-      const handleStartCycleOnSelectedDate = () => {
-        const newLog = {
-          id: `cyc_${Date.now()}`,
-          startDate: selectedDate,
-          endDate: '',
-          note: '',
-        };
-        setCycleLogs((prev) => [...prev, newLog]);
-        showToast(`${selectedDate} を生理開始日として記録しました`);
-      };
-
-      const handleSetCycleEndOnSelectedDate = () => {
-        if (!selectedDayCycleLog) return;
-        if (selectedDate < selectedDayCycleLog.startDate) {
-          showToast('開始日より前の日付は終了日にできません');
+      const requestNotificationPermission = async () => {
+        if (typeof Notification === 'undefined') {
+          showToast('このブラウザは通知機能に対応していません');
           return;
         }
-        setCycleLogs((prev) =>
-          prev.map((l) => (l.id === selectedDayCycleLog.id ? { ...l, endDate: selectedDate } : l))
-        );
-        showToast(`${selectedDate} を終了日に設定しました`);
-      };
-
-      const handleSaveCycleNote = () => {
-        if (!selectedDayCycleLog) return;
-        setCycleLogs((prev) =>
-          prev.map((l) => (l.id === selectedDayCycleLog.id ? { ...l, note: cycleNoteInput } : l))
-        );
-        showToast('体調メモを保存しました');
-      };
-
-      const toggleComplete = (id) => {
-        setEvents((prev) => prev.map((ev) => (ev.id === id ? { ...ev, completed: !ev.completed } : ev)));
-      };
-
-      const togglePinEvent = (id) => {
-        setEvents((prev) => prev.map((ev) => (ev.id === id ? { ...ev, isPinned: !ev.isPinned } : ev)));
-      };
-
-      const getCategoryNameByColor = (color) => {
-        const found = COLOR_PALETTE.find((c) => c.color.toLowerCase() === (color || '').toLowerCase());
-        return found ? found.name : 'その他';
-      };
-
-      const applySubscriptionsToCurrentMonth = () => {
-        if (subscriptions.length === 0) return;
-        const maxDay = new Date(year, month, 0).getDate();
-        let addedCount = 0;
-        const toAdd = [];
-
-        subscriptions.forEach((sub, idx) => {
-          const d = Math.min(Number(sub.dayOfMonth) || 1, maxDay);
-          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          const exists = events.some(
-            (ev) => ev.date.startsWith(monthPrefix) && ev.title === sub.name && Number(ev.amount) === Number(sub.amount)
-          );
-          if (!exists) {
-            addedCount++;
-            toAdd.push({
-              id: `sub_ev_${Date.now()}_${idx}`,
-              title: sub.name,
-              date: dateStr,
-              endDate: dateStr,
-              isAllDay: true,
-              startTime: '',
-              endTime: '',
-              color: sub.color || '#5B6270',
-              amount: Number(sub.amount) || 0,
-              isExpense: true,
-              isShift: false,
-              completed: dateStr <= todayStr,
-              memo: '固定費・サブスク自動反映',
-              subItems: [],
-              reminder: 'none',
-              isPinned: false,
-              groupId: null,
-            });
-          }
-        });
-
-        if (addedCount === 0) {
-          showToast(`${month}月分はすでに反映済みです`);
-          return;
+        try {
+          const res = await Notification.requestPermission();
+          setNotifPermission(res);
+          showToast(res === 'granted' ? '通知を許可しました' : '通知が許可されませんでした');
+        } catch {
+          showToast('通知許可の取得に失敗しました');
         }
-        setEvents((prev) => [...toAdd, ...prev]);
-        showToast(`${month}月分の固定費 ${addedCount}件を反映しました`);
-      };
-
-      const handleQuickShiftRegister = (pat, overrideDate = null) => {
-        const job = jobs.find((j) => j.id === pat.jobId);
-        if (!job) return;
-        const targetDate = overrideDate || (viewMode === 'day' || viewMode === 'week' ? selectedDate : todayStr);
-        const calc = calcShiftDetails(pat.startTime, pat.endTime, job);
-        const ev = {
-          id: `shift_quick_${Date.now()}`,
-          title: `${job.name}（バイト）`,
-          date: targetDate,
-          endDate: targetDate,
-          isAllDay: false,
-          startTime: pat.startTime,
-          endTime: pat.endTime,
-          color: job.color || '#2E7D5B',
-          amount: calc.pay,
-          isExpense: false,
-          isShift: true,
-          jobId: job.id,
-          shiftMeta: calc,
-          completed: targetDate <= todayStr,
-          memo: '',
-          subItems: [],
-          reminder: 'none',
-          isPinned: false,
-          groupId: null,
-        };
-        setEvents((prev) => [ev, ...prev]);
-        setIsQuickMenuOpen(false);
-        showToast(`${targetDate.slice(5)} に「${job.name}」(+${calc.pay.toLocaleString()}円)を登録しました`);
-      };
-
-      const togglePinShiftHistory = (e, key) => {
-        e.stopPropagation();
-        setPinnedShiftKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
-      };
-
-      const removeShiftHistoryPattern = (e, key) => {
-        e.stopPropagation();
-        setHiddenShiftKeys((prev) => [...prev, key]);
-        showToast('シフト履歴候補から非表示にしました');
-      };
-
-      const applyShiftHistoryToForm = (pat) => {
-        setNewEvent((prev) => ({
-          ...prev,
-          jobId: pat.jobId,
-          startTime: pat.startTime,
-          endTime: pat.endTime,
-          color: pat.color,
-        }));
       };
 
       const downloadICS = (ev) => {
-        const dStart = (ev.date || todayStr).replace(/-/g, '');
-        const dEndBase = parseDateLocal(ev.endDate || ev.date || todayStr);
-        const dEndNext = new Date(dEndBase.getFullYear(), dEndBase.getMonth(), dEndBase.getDate() + 1);
-        const dEnd = getLocalDateStr(dEndNext).replace(/-/g, '');
-
-        let dtStartLine = `DTSTART;VALUE=DATE:${dStart}`;
-        let dtEndLine = `DTEND;VALUE=DATE:${dEnd}`;
-        if (!ev.isAllDay && ev.startTime) {
-          const st = ev.startTime.replace(':', '') + '00';
-          const et = (ev.endTime || ev.startTime).replace(':', '') + '00';
-          dtStartLine = `DTSTART:${dStart}T${st}`;
-          dtEndLine = `DTEND:${dStart}T${et}`;
-        }
-
+        const dtStart = ev.date.replace(/-/g, '') + (ev.isAllDay || !ev.startTime ? '' : 'T' + ev.startTime.replace(':', '') + '00');
+        const dtEnd = (ev.endDate || ev.date).replace(/-/g, '') + (ev.isAllDay || !ev.endTime ? '' : 'T' + ev.endTime.replace(':', '') + '00');
         const icsContent = [
           'BEGIN:VCALENDAR',
           'VERSION:2.0',
-          'PRODID:-//CalBudgetApp//JP',
           'BEGIN:VEVENT',
-          `UID:${ev.id}@calbudget.local`,
-          dtStartLine,
-          dtEndLine,
-          `SUMMARY:${(ev.title || '').replace(/\n/g, ' ')}`,
-          `DESCRIPTION:${(ev.memo || '').replace(/\n/g, ' ')}`,
+          `SUMMARY:${ev.title}`,
+          ev.isAllDay ? `DTSTART;VALUE=DATE:${dtStart}` : `DTSTART:${dtStart}`,
+          ev.isAllDay ? `DTEND;VALUE=DATE:${dtEnd}` : `DTEND:${dtEnd}`,
+          `DESCRIPTION:${(ev.memo || '').replace(/\n/g, '\\n')}`,
           'END:VEVENT',
           'END:VCALENDAR',
         ].join('\r\n');
-
         const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1252,31 +1192,31 @@
         a.download = `${ev.title || 'event'}.ics`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('カレンダー通知用(.ics)を出力しました');
+        showToast('カレンダー通知ファイル(.ics)を保存しました');
       };
 
       const openCreateModal = (defaultTab = 'schedule') => {
+        const baseDate = viewMode === 'day' || viewMode === 'week' ? selectedDate : todayStr;
         setEditingId(null);
         setEditGroupScope('single');
-        setModalTab(defaultTab);
         setRepeatOption('none');
+        setBulkTargetMonth('current');
+        setModalTab(defaultTab);
         setShowScheduleAmount(false);
         setShowSubItemsPanel(false);
         setSubItemInput({ name: '', price: '' });
-
-        const defaultJob = jobs[0];
         setNewEvent({
           title: '',
-          date: selectedDate,
-          endDate: selectedDate,
+          date: baseDate,
+          endDate: baseDate,
           isAllDay: defaultTab !== 'shift',
           startTime: defaultTab === 'shift' ? '17:00' : '10:00',
-          endTime: defaultTab === 'shift' ? '22:00' : '11:00',
-          color: defaultTab === 'shift' ? (defaultJob?.color || '#2E7D5B') : defaultTab === 'finance' ? '#C28540' : '#3E7B67',
+          endTime: defaultTab === 'shift' ? '22:00' : '12:00',
+          color: defaultTab === 'finance' ? '#C28540' : defaultTab === 'shift' ? '#2E7D5B' : '#3E7B67',
           amount: 0,
           isExpense: defaultTab !== 'shift',
           isShift: defaultTab === 'shift',
-          jobId: defaultJob ? defaultJob.id : '',
+          jobId: jobs[0]?.id || '',
           memo: '',
           subItems: [],
           reminder: 'none',
@@ -1289,16 +1229,16 @@
       const openEditModal = (ev) => {
         setEditingId(ev.id);
         setEditGroupScope('single');
-        const tab = ev.isShift ? 'shift' : Number(ev.amount) > 0 && ev.isAllDay && !ev.isPinned && (!ev.reminder || ev.reminder === 'none') ? 'finance' : 'schedule';
-        setModalTab(tab);
         setRepeatOption('none');
-        setShowScheduleAmount(Number(ev.amount) > 0);
+        const tab = ev.isShift ? 'shift' : (Number(ev.amount) > 0 && ev.isAllDay && !ev.isPinned) ? 'finance' : 'schedule';
+        setModalTab(tab);
+        setShowScheduleAmount(tab === 'schedule' && Number(ev.amount) > 0);
         setShowSubItemsPanel(Array.isArray(ev.subItems) && ev.subItems.length > 0);
         setSubItemInput({ name: '', price: '' });
         setNewEvent({
           ...ev,
           endDate: ev.endDate || ev.date,
-          subItems: Array.isArray(ev.subItems) ? ev.subItems : [],
+          subItems: Array.isArray(ev.subItems) ? [...ev.subItems] : [],
         });
         setIsModalOpen(true);
       };
@@ -1306,214 +1246,318 @@
       const switchModalTab = (tab) => {
         setModalTab(tab);
         if (tab === 'shift') {
-          const job = jobs.find((j) => j.id === newEvent.jobId) || jobs[0];
-          setNewEvent((prev) => ({
+          setNewEvent(prev => ({
             ...prev,
             isShift: true,
             isExpense: false,
             isAllDay: false,
-            jobId: job ? job.id : '',
-            color: job ? job.color : '#2E7D5B',
+            jobId: prev.jobId || jobs[0]?.id || '',
             startTime: prev.startTime || '17:00',
             endTime: prev.endTime || '22:00',
           }));
         } else if (tab === 'finance') {
-          setNewEvent((prev) => ({
+          setNewEvent(prev => ({
             ...prev,
             isShift: false,
             isAllDay: true,
             color: prev.color === '#2E7D5B' ? '#C28540' : prev.color,
           }));
         } else {
-          setNewEvent((prev) => ({
+          setNewEvent(prev => ({
             ...prev,
             isShift: false,
           }));
         }
       };
 
+      const handleAddSubItem = () => {
+        const priceNum = Number(subItemInput.price);
+        if (!subItemInput.name.trim() || priceNum <= 0) return;
+        const nextSubs = [...newEvent.subItems, { id: 'sub_' + Date.now(), name: subItemInput.name.trim(), price: priceNum }];
+        const sum = nextSubs.reduce((s, item) => s + Number(item.price), 0);
+        setNewEvent({ ...newEvent, subItems: nextSubs, amount: sum });
+        setSubItemInput({ name: '', price: '' });
+      };
+
+      const handleRemoveSubItem = (id) => {
+        const nextSubs = newEvent.subItems.filter(s => s.id !== id);
+        const sum = nextSubs.reduce((s, item) => s + Number(item.price), 0);
+        setNewEvent({ ...newEvent, subItems: nextSubs, amount: nextSubs.length > 0 ? sum : newEvent.amount });
+      };
+
       const applyTemplateToForm = (tpl) => {
-        setNewEvent((prev) => ({
+        setNewEvent(prev => ({
           ...prev,
           title: tpl.title,
-          amount: Number(tpl.amount) || 0,
-          color: tpl.color || prev.color,
+          amount: Number(tpl.amount),
+          color: tpl.color,
           isExpense: tpl.isExpense !== false,
         }));
       };
 
-      const handleAddSubItem = () => {
-        const priceNum = Number(subItemInput.price);
-        if (!subItemInput.name.trim() || priceNum <= 0) return;
-        const nextSubs = [...(newEvent.subItems || []), { id: `sub_${Date.now()}`, name: subItemInput.name.trim(), price: priceNum }];
-        const sum = nextSubs.reduce((s, x) => s + Number(x.price), 0);
-        setNewEvent((prev) => ({ ...prev, subItems: nextSubs, amount: sum }));
-        setSubItemInput({ name: '', price: '' });
+      const applyShiftHistoryToForm = (pat) => {
+        setNewEvent(prev => ({
+          ...prev,
+          jobId: pat.jobId || prev.jobId,
+          startTime: pat.startTime,
+          endTime: pat.endTime,
+          isAllDay: false,
+          isShift: true,
+        }));
       };
 
-      const handleRemoveSubItem = (subId) => {
-        const nextSubs = (newEvent.subItems || []).filter((s) => s.id !== subId);
-        const sum = nextSubs.reduce((s, x) => s + Number(x.price), 0);
-        setNewEvent((prev) => ({ ...prev, subItems: nextSubs, amount: nextSubs.length > 0 ? sum : prev.amount }));
+      const handleQuickShiftRegister = (pat, targetDateOverride = null) => {
+        const targetDate = targetDateOverride || (viewMode === 'day' || viewMode === 'week' ? selectedDate : todayStr);
+        const job = jobs.find(j => j.id === pat.jobId);
+        const calc = job ? calcShiftDetails(pat.startTime, pat.endTime, job) : null;
+        const pay = calc ? calc.pay : Number(pat.pay) || 0;
+        const ev = {
+          id: 'shf_q_' + Date.now(),
+          title: `バイト: ${pat.jobName}`,
+          date: targetDate,
+          endDate: targetDate,
+          isAllDay: false,
+          startTime: pat.startTime,
+          endTime: pat.endTime,
+          color: job ? job.color : pat.color,
+          amount: pay,
+          isExpense: false,
+          isShift: true,
+          jobId: pat.jobId || '',
+          shiftMeta: calc,
+          completed: targetDate <= todayStr,
+          memo: '',
+          subItems: [],
+          reminder: 'none',
+          isPinned: false,
+          groupId: null,
+        };
+        setEvents(prev => [ev, ...prev]);
+        setIsQuickMenuOpen(false);
+        showToast(`${targetDate.slice(5)}に「${pat.jobName} ${pat.startTime}〜${pat.endTime}」を登録しました`);
+      };
+
+      const removeShiftHistoryPattern = (e, key) => {
+        e.stopPropagation();
+        setHiddenShiftKeys(prev => (prev.includes(key) ? prev : [...prev, key]));
+        showToast('履歴候補から非表示にしました');
+      };
+
+      const togglePinShiftHistory = (e, key) => {
+        e.stopPropagation();
+        setPinnedShiftKeys(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
       };
 
       const toggleWeekdayChoice = (dayIdx) => {
-        setSelectedWeekdays((prev) =>
-          prev.includes(dayIdx) ? prev.filter((d) => d !== dayIdx) : [...prev, dayIdx]
+        setSelectedWeekdays(prev =>
+          prev.includes(dayIdx) ? prev.filter(d => d !== dayIdx) : [...prev, dayIdx].sort((a, b) => a - b)
         );
+      };
+
+      const applySubscriptionsToCurrentMonth = () => {
+        if (subscriptions.length === 0) return;
+        const maxDay = new Date(year, month, 0).getDate();
+        const created = subscriptions.map((sub, idx) => {
+          const day = Math.min(Number(sub.dayOfMonth) || 1, maxDay);
+          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          return {
+            id: `sub_ev_${Date.now()}_${idx}`,
+            title: `[固定費] ${sub.name}`,
+            date: dateStr,
+            endDate: dateStr,
+            isAllDay: true,
+            startTime: '',
+            endTime: '',
+            color: sub.color || '#5B6270',
+            amount: Number(sub.amount) || 0,
+            isExpense: true,
+            isShift: false,
+            completed: dateStr <= todayStr,
+            memo: '固定費・サブスク自動反映',
+            subItems: [],
+            reminder: 'none',
+            isPinned: false,
+            groupId: null,
+          };
+        });
+        setEvents(prev => [...created, ...prev]);
+        showToast(`${month}月分に固定費 ${created.length}件を反映しました`);
       };
 
       const handleSaveEvent = (e) => {
         e.preventDefault();
-        const isShiftMode = modalTab === 'shift';
-        let finalTitle = (newEvent.title || '').trim();
-        let finalAmount = Number(newEvent.amount) || 0;
-        let finalColor = newEvent.color || '#3E7B67';
-        let finalIsExpense = Boolean(newEvent.isExpense);
-        let shiftMeta = null;
+        let finalEvent = { ...newEvent };
 
-        if (isShiftMode) {
-          const job = jobs.find((j) => j.id === newEvent.jobId);
+        if (modalTab === 'shift') {
+          const job = jobs.find(j => j.id === finalEvent.jobId);
           if (!job) {
             showToast('勤務先を選択してください');
             return;
           }
-          const calc = calcShiftDetails(newEvent.startTime, newEvent.endTime, job);
-          finalTitle = `${job.name}（バイト）`;
-          finalAmount = calc.pay;
-          finalColor = job.color || '#2E7D5B';
-          finalIsExpense = false;
-          shiftMeta = calc;
+          const calc = calcShiftDetails(finalEvent.startTime, finalEvent.endTime, job);
+          finalEvent = {
+            ...finalEvent,
+            title: `バイト: ${job.name}`,
+            color: job.color,
+            amount: calc.pay,
+            isExpense: false,
+            isShift: true,
+            isAllDay: false,
+            shiftMeta: calc,
+          };
+        } else if (modalTab === 'finance') {
+          const amt = Number(finalEvent.amount) || 0;
+          finalEvent = {
+            ...finalEvent,
+            title: finalEvent.title.trim() || (finalEvent.isExpense ? '支出' : '収入'),
+            amount: amt,
+            isShift: false,
+            isAllDay: true,
+            endDate: finalEvent.date,
+          };
         } else {
-          if (!finalTitle) {
-            finalTitle = modalTab === 'finance' ? (finalIsExpense ? '支出' : '収入') : '予定';
-          }
-          if (modalTab === 'schedule' && !showScheduleAmount) {
-            finalAmount = 0;
-          }
+          finalEvent = {
+            ...finalEvent,
+            title: finalEvent.title.trim() || '予定',
+            amount: showScheduleAmount ? Number(finalEvent.amount) || 0 : 0,
+            isShift: false,
+            endDate: !finalEvent.endDate || finalEvent.endDate < finalEvent.date ? finalEvent.date : finalEvent.endDate,
+          };
         }
 
         if (editingId) {
-          setEvents((prev) =>
-            prev.map((ev) => {
-              const isTarget =
-                ev.id === editingId ||
-                (editGroupScope === 'group' && newEvent.groupId && ev.groupId === newEvent.groupId);
-              if (!isTarget) return ev;
-              const keepDate = editGroupScope === 'group' && ev.id !== editingId;
-              return {
-                ...ev,
-                title: finalTitle,
-                date: keepDate ? ev.date : newEvent.date,
-                endDate: keepDate ? (ev.endDate || ev.date) : (newEvent.endDate || newEvent.date),
-                isAllDay: isShiftMode ? false : Boolean(newEvent.isAllDay),
-                startTime: isShiftMode || !newEvent.isAllDay ? newEvent.startTime : '',
-                endTime: isShiftMode || !newEvent.isAllDay ? newEvent.endTime : '',
-                color: finalColor,
-                amount: finalAmount,
-                isExpense: finalIsExpense,
-                isShift: isShiftMode,
-                jobId: isShiftMode ? newEvent.jobId : '',
-                shiftMeta,
-                memo: newEvent.memo || '',
-                subItems: newEvent.subItems || [],
-                reminder: newEvent.reminder || 'none',
-                isPinned: Boolean(newEvent.isPinned),
-              };
-            })
-          );
+          if (finalEvent.groupId && editGroupScope === 'group') {
+            setEvents(prev =>
+              prev.map(ev => {
+                if (ev.groupId !== finalEvent.groupId) return ev;
+                return {
+                  ...ev,
+                  title: finalEvent.title,
+                  isAllDay: finalEvent.isAllDay,
+                  startTime: finalEvent.startTime,
+                  endTime: finalEvent.endTime,
+                  color: finalEvent.color,
+                  amount: finalEvent.amount,
+                  isExpense: finalEvent.isExpense,
+                  isShift: finalEvent.isShift,
+                  jobId: finalEvent.jobId,
+                  shiftMeta: finalEvent.shiftMeta,
+                  memo: finalEvent.memo,
+                  reminder: finalEvent.reminder,
+                  isPinned: finalEvent.isPinned,
+                };
+              })
+            );
+            showToast('繰り返しグループ全体を更新しました');
+          } else {
+            setEvents(prev => prev.map(ev => (ev.id === editingId ? { ...finalEvent, id: editingId } : ev)));
+            showToast('変更を保存しました');
+          }
           setIsModalOpen(false);
-          showToast('変更を保存しました');
           return;
         }
 
-        const targetDates = [];
-        let createdGroupId = null;
-
-        if (isShiftMode && repeatOption === 'weekday_month') {
+        if (modalTab === 'shift' && repeatOption === 'weekday_month') {
           if (bulkWeekdayDates.length === 0) {
             showToast('曜日を1つ以上選択してください');
             return;
           }
-          createdGroupId = `grp_${Date.now()}`;
-          bulkWeekdayDates.forEach((d) => targetDates.push({ start: d, end: d }));
-        } else if (repeatOption === 'weekly_4') {
-          createdGroupId = `grp_${Date.now()}`;
-          const baseS = parseDateLocal(newEvent.date);
-          const baseE = parseDateLocal(newEvent.endDate || newEvent.date);
-          const spanDays = Math.max(0, Math.round((baseE - baseS) / 86400000));
-          for (let w = 0; w < 4; w++) {
-            const s = new Date(baseS.getFullYear(), baseS.getMonth(), baseS.getDate() + w * 7);
-            const ed = new Date(s.getFullYear(), s.getMonth(), s.getDate() + spanDays);
-            targetDates.push({ start: getLocalDateStr(s), end: getLocalDateStr(ed) });
-          }
-        } else if (repeatOption === 'monthly_3') {
-          createdGroupId = `grp_${Date.now()}`;
-          const baseS = parseDateLocal(newEvent.date);
-          for (let m = 0; m < 3; m++) {
-            const ty = baseS.getFullYear() + Math.floor((baseS.getMonth() + m) / 12);
-            const tm = (baseS.getMonth() + m) % 12;
-            const maxD = new Date(ty, tm + 1, 0).getDate();
-            const dStr = getLocalDateStr(new Date(ty, tm, Math.min(baseS.getDate(), maxD)));
-            targetDates.push({ start: dStr, end: dStr });
-          }
-        } else {
-          targetDates.push({ start: newEvent.date, end: newEvent.endDate || newEvent.date });
+          const grpId = 'grp_' + Date.now();
+          const batch = bulkWeekdayDates.map((dStr, idx) => ({
+            ...finalEvent,
+            id: `ev_bulk_${Date.now()}_${idx}`,
+            date: dStr,
+            endDate: dStr,
+            completed: dStr < todayStr,
+            groupId: grpId,
+          }));
+          setEvents(prev => [...batch, ...prev]);
+          setIsModalOpen(false);
+          showToast(`${batch.length}日分のシフトを一括登録しました`);
+          return;
         }
 
-        const createdList = targetDates.map((rng, idx) => ({
-          id: `ev_${Date.now()}_${idx}`,
-          title: finalTitle,
-          date: rng.start,
-          endDate: rng.end,
-          isAllDay: isShiftMode ? false : Boolean(newEvent.isAllDay),
-          startTime: isShiftMode || !newEvent.isAllDay ? newEvent.startTime : '',
-          endTime: isShiftMode || !newEvent.isAllDay ? newEvent.endTime : '',
-          color: finalColor,
-          amount: finalAmount,
-          isExpense: finalIsExpense,
-          isShift: isShiftMode,
-          jobId: isShiftMode ? newEvent.jobId : '',
-          shiftMeta,
-          completed: rng.start <= todayStr && modalTab === 'finance',
-          memo: newEvent.memo || '',
-          subItems: newEvent.subItems || [],
-          reminder: newEvent.reminder || 'none',
-          isPinned: Boolean(newEvent.isPinned),
-          groupId: createdGroupId,
-        }));
+        if (repeatOption === 'weekly_4' || repeatOption === 'monthly_3') {
+          const count = repeatOption === 'weekly_4' ? 4 : 3;
+          const grpId = 'grp_' + Date.now();
+          const baseStart = parseDateLocal(finalEvent.date);
+          const baseEnd = parseDateLocal(finalEvent.endDate || finalEvent.date);
+          const spanDays = Math.max(0, Math.round((baseEnd - baseStart) / 86400000));
 
-        setEvents((prev) => [...createdList, ...prev]);
+          const batch = Array.from({ length: count }, (_, idx) => {
+            const s = new Date(baseStart);
+            if (repeatOption === 'weekly_4') {
+              s.setDate(s.getDate() + idx * 7);
+            } else {
+              s.setMonth(s.getMonth() + idx);
+            }
+            const eDate = new Date(s);
+            eDate.setDate(eDate.getDate() + spanDays);
+            const sStr = getLocalDateStr(s);
+            return {
+              ...finalEvent,
+              id: `ev_rep_${Date.now()}_${idx}`,
+              date: sStr,
+              endDate: getLocalDateStr(eDate),
+              completed: sStr < todayStr,
+              groupId: grpId,
+            };
+          });
+          setEvents(prev => [...batch, ...prev]);
+          setIsModalOpen(false);
+          showToast(`${count}件の繰り返し予定を登録しました`);
+          return;
+        }
+
+        const created = {
+          ...finalEvent,
+          id: 'ev_' + Date.now(),
+          completed: finalEvent.date < todayStr && (modalTab === 'finance' || modalTab === 'shift'),
+        };
+        setEvents(prev => [created, ...prev]);
         setIsModalOpen(false);
-        showToast(createdList.length > 1 ? `${createdList.length}件まとめて登録しました` : '登録しました');
+        showToast('登録しました');
+      };
+
+      const toggleComplete = (id) => {
+        setEvents(prev => prev.map(ev => (ev.id === id ? { ...ev, completed: !ev.completed } : ev)));
+      };
+
+      const togglePinEvent = (id) => {
+        setEvents(prev =>
+          prev.map(ev => {
+            if (ev.id !== id) return ev;
+            const nextPin = !ev.isPinned;
+            showToast(nextPin ? '上部にピン止めしました' : 'ピン止めを解除しました');
+            return { ...ev, isPinned: nextPin };
+          })
+        );
       };
 
       const requestDeleteEvent = (ev) => {
-        const groupCount = ev.groupId ? events.filter((item) => item.groupId === ev.groupId).length : 0;
-        setDeleteConfirmModal({
-          ev,
-          isGroup: Boolean(ev.groupId && groupCount > 1),
-          groupCount,
-        });
+        if (ev.groupId) {
+          const groupCount = events.filter(item => item.groupId === ev.groupId).length;
+          if (groupCount > 1) {
+            setDeleteConfirmModal({ ev, isGroup: true, groupCount });
+            return;
+          }
+        }
+        setDeleteConfirmModal({ ev, isGroup: false, groupCount: 1 });
       };
 
       const executeDeleteEvent = (scope) => {
         if (!deleteConfirmModal) return;
         const { ev } = deleteConfirmModal;
-        const prevEventsSnapshot = [...events];
+        setUndoSnapshot({ events: [...events] });
         if (scope === 'group' && ev.groupId) {
-          setEvents((prev) => prev.filter((item) => item.groupId !== ev.groupId));
-          setUndoSnapshot({ label: `グループ「${ev.title}」を削除しました`, events: prevEventsSnapshot });
-          showToast(`グループ「${ev.title}」を削除しました`, true);
+          setEvents(prev => prev.filter(item => item.groupId !== ev.groupId));
+          showToast('繰り返しグループを削除しました', true);
         } else {
-          setEvents((prev) => prev.filter((item) => item.id !== ev.id));
-          setUndoSnapshot({ label: `「${ev.title}」を削除しました`, events: prevEventsSnapshot });
+          setEvents(prev => prev.filter(item => item.id !== ev.id));
           showToast(`「${ev.title}」を削除しました`, true);
         }
         setDeleteConfirmModal(null);
       };
-
-      // ====== ここまでが 2/3 です。続けて 3/3 をこの直下に貼り付けてください ======
     const handleUndoDelete = () => {
         if (!undoSnapshot) return;
         setEvents(undoSnapshot.events);
@@ -1598,7 +1642,7 @@
       };
 
       const updateJobPayDay = (id, payDayVal) => {
-        setJobs(prev => prev.map(j => j.id === id ? { ...j, payDay: Number(payDayVal) } : j));
+        setJobs(prev => prev.map(j => (j.id === id ? { ...j, payDay: Number(payDayVal) } : j)));
       };
 
       const handleAnalyzeStatement = () => {
@@ -1717,7 +1761,7 @@
       };
 
       const toggleImportSelection = (id) => {
-        setSelectedImportIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        setSelectedImportIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
       };
 
       const toggleSelectAllImport = () => {
@@ -1728,19 +1772,21 @@
 
       const executeCustomImport = () => {
         if (!sharedEvents) return;
-        const chosen = sharedEvents.filter(ev => selectedImportIds.includes(ev.id)).map((ev, idx) => ({
-          ...ev,
-          id: `shared_imp_${Date.now()}_${idx}`,
-          color: importCustomColor === 'ORIGINAL' ? ev.color : importCustomColor,
-          isSharedImport: true,
-          sharedBadge: importBadgeLabel.trim() || '共有',
-          amount: importIncludeMoney ? (Number(ev.amount) || 0) : 0,
-          isShift: false,
-          isPinned: false,
-          groupId: null,
-          memo: ev.memo || '',
-          subItems: [],
-        }));
+        const chosen = sharedEvents
+          .filter(ev => selectedImportIds.includes(ev.id))
+          .map((ev, idx) => ({
+            ...ev,
+            id: `shared_imp_${Date.now()}_${idx}`,
+            color: importCustomColor === 'ORIGINAL' ? ev.color : importCustomColor,
+            isSharedImport: true,
+            sharedBadge: importBadgeLabel.trim() || '共有',
+            amount: importIncludeMoney ? (Number(ev.amount) || 0) : 0,
+            isShift: false,
+            isPinned: false,
+            groupId: null,
+            memo: ev.memo || '',
+            subItems: [],
+          }));
         setEvents(prev => [...chosen, ...prev]);
         setIsImportModalOpen(false);
         setIsViewingShared(false);
@@ -2571,8 +2617,6 @@
                 </div>
               </div>
             )}
-
-            {/* ====== ここまでが 3/4 です。最後の 4/4 をこの直下に貼り付けてください ====== */}
             {viewMode === 'finance' && (
               <div className="space-y-3.5">
                 {!isViewingShared && (
