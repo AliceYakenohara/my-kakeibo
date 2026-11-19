@@ -2665,7 +2665,7 @@ const handleTouchStart = (e) => {
               </div>
             )}
             {/* === PART 4/5 END === */}
-            {/* === PART 5/5 START === */}
+          {/* === PART 5/5 START === */}
             {viewMode === 'finance' && (
               <div className="space-y-3.5">
                 {!isViewingShared && (
@@ -3634,7 +3634,7 @@ const handleTouchStart = (e) => {
           {!isViewingShared && isQuickMenuOpen && (
             <div className="fixed inset-0 bg-slate-900/30 z-30" onClick={() => setIsQuickMenuOpen(false)}>
               <div
-                className="fixed bottom-36 right-5 w-72 max-w-[88vw] bg-white rounded-2xl shadow-2xl border border-stone-200 p-3.5 space-y-3 z-40 max-h-[70vh] overflow-y-auto"
+                className="fixed bottom-32 right-3.5 w-76 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-stone-200 p-3.5 space-y-3 z-40 max-h-[70vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
@@ -3659,8 +3659,12 @@ const handleTouchStart = (e) => {
                       <div
                         key={pat.key}
                         onClick={() => handleQuickShiftRegister(pat)}
-                        className={`w-full flex justify-between items-center p-2 rounded-xl border text-xs cursor-pointer transition ${
-                          darkMode
+                        className={`w-full flex justify-between items-center p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                          pat.isPinned
+                            ? darkMode
+                              ? 'bg-amber-950/40 border-amber-500/80'
+                              : 'bg-amber-50/90 border-amber-400'
+                            : darkMode
                             ? 'bg-emerald-950/30 hover:bg-emerald-900/40 border-emerald-800/70'
                             : 'bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200/80'
                         }`}
@@ -3669,7 +3673,7 @@ const handleTouchStart = (e) => {
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pat.color }} />
                           <div className="truncate">
                             <div className="font-bold text-slate-800 truncate">{pat.jobName}</div>
-                            <div className="text-[10px] text-emerald-700 font-bold">{pat.startTime} 〜 {pat.endTime}</div>
+                            <div className="text-[11px] text-emerald-700 font-bold">{pat.startTime} 〜 {pat.endTime}</div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-1.5 ml-2 shrink-0">
@@ -3679,9 +3683,13 @@ const handleTouchStart = (e) => {
                           <button
                             type="button"
                             onClick={(e) => togglePinShiftHistory(e, pat.key)}
-                            className={`text-[11px] px-1 ${pat.isPinned ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}`}
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                              pat.isPinned
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-stone-100 text-slate-400 grayscale opacity-60'
+                            }`}
                           >
-                            📌
+                            📌{pat.isPinned ? '固定' : ''}
                           </button>
                           <button
                             type="button"
@@ -3724,20 +3732,21 @@ const handleTouchStart = (e) => {
           )}
 
           {!isViewingShared && (
-            <div className="fixed bottom-20 right-5 flex flex-col items-end space-y-2.5 z-20">
+            <div className="fixed bottom-16 right-3.5 flex items-center space-x-2 z-20">
               <button
                 onClick={() => setIsQuickMenuOpen(!isQuickMenuOpen)}
-                className="w-11 h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-full shadow-md flex items-center justify-center text-base font-bold transition"
+                className="w-10 h-10 bg-amber-600 hover:bg-amber-500 text-white rounded-full shadow-md flex items-center justify-center text-sm font-bold transition"
                 title="過去のシフト履歴・定型文で即登録"
               >
                 ⚡
               </button>
               <button
                 onClick={() => openCreateModal(viewMode === 'finance' ? 'finance' : 'schedule')}
-                className="w-14 h-14 bg-slate-800 hover:bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center text-2xl font-normal transition"
+                className="h-11 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center space-x-1 text-sm font-bold transition"
                 title="予定・収支を追加"
               >
-                ＋
+                <span className="text-lg leading-none">＋</span>
+                <span>追加</span>
               </button>
             </div>
           )}
