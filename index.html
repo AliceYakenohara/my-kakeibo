@@ -1129,7 +1129,11 @@
         setCurrentDate(new Date(cur.getFullYear(), cur.getMonth(), 1));
       };
 
-      const handleTouchStart = (e) => {
+const handleTouchStart = (e) => {
+        if (e.target && e.target.closest && e.target.closest('.no-swipe-nav')) {
+          touchStartXRef.current = null;
+          return;
+        }
         if (e.touches && e.touches.length === 1) {
           touchStartXRef.current = e.touches[0].clientX;
         }
@@ -1137,6 +1141,10 @@
 
       const handleTouchEnd = (e) => {
         if (touchStartXRef.current === null) return;
+        if (e.target && e.target.closest && e.target.closest('.no-swipe-nav')) {
+          touchStartXRef.current = null;
+          return;
+        }
         const endX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
         if (endX === null) return;
         const diffX = endX - touchStartXRef.current;
@@ -2344,45 +2352,77 @@
                 </div>
 
                 {!isViewingShared && shiftHistoryPatterns.length > 0 && (
-                  <div className={`p-3 rounded-2xl border space-y-1.5 ${
-                    darkMode ? 'bg-emerald-950/30 border-emerald-800/60' : 'bg-emerald-50/70 border-emerald-200/80'
-                  }`}>
+                  <div
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    className={`no-swipe-nav p-3 rounded-2xl border space-y-2 ${
+                      darkMode ? 'bg-emerald-950/30 border-emerald-800/60' : 'bg-emerald-50/70 border-emerald-200/80'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className={`text-[11px] font-bold ${darkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>
+                      <span className={`text-xs font-bold ${darkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>
                         💼 履歴から1タップでシフト追加
                       </span>
                       <span className={`text-[10px] ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                        📌固定 / ✕履歴削除
+                        横スクロール可 / 📌で先頭固定
                       </span>
                     </div>
-                    <div className="flex space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
+                    <div className="flex space-x-2.5 overflow-x-auto pb-1.5 pt-0.5">
                       {shiftHistoryPatterns.map(pat => (
                         <div
                           key={pat.key}
                           onClick={() => handleQuickShiftRegister(pat, selectedDate)}
-                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold whitespace-nowrap flex items-center space-x-1.5 shadow-sm cursor-pointer transition active:scale-95 ${
-                            darkMode
-                              ? 'bg-slate-900 border-emerald-800/70 text-slate-100 hover:bg-slate-800'
-                              : 'bg-white border-emerald-200 text-slate-800 hover:bg-emerald-100/80'
+                          className={`min-w-[156px] max-w-[172px] shrink-0 p-2.5 rounded-xl border cursor-pointer transition active:scale-95 flex flex-col justify-between space-y-1.5 ${
+                            pat.isPinned
+                              ? darkMode
+                                ? 'bg-amber-950/40 border-amber-500/80 shadow-sm'
+                                : 'bg-amber-50/90 border-amber-400 shadow-sm'
+                              : darkMode
+                              ? 'bg-slate-900 border-emerald-800/70 hover:bg-slate-800'
+                              : 'bg-white border-emerald-200 hover:bg-emerald-100/60 shadow-sm'
                           }`}
                         >
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: pat.color }} />
-                          <span>{pat.jobName}</span>
-                          <span className={darkMode ? 'text-emerald-400' : 'text-emerald-800'}>{pat.startTime}〜{pat.endTime}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => togglePinShiftHistory(e, pat.key)}
-                            className={`text-[10px] px-1 rounded ${pat.isPinned ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}`}
-                          >
-                            📌
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => removeShiftHistoryPattern(e, pat.key)}
-                            className="text-[10px] text-slate-400 hover:text-rose-500 pl-0.5"
-                          >
-                            ✕
-                          </button>
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center space-x-1.5 min-w-0">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pat.color }} />
+                              <span className={`text-[11px] font-bold truncate ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>
+                                {pat.jobName}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => togglePinShiftHistory(e, pat.key)}
+                                title={pat.isPinned ? '固定を解除' : '先頭に固定'}
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition ${
+                                  pat.isPinned
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-stone-100 text-slate-400 grayscale opacity-60 hover:opacity-100'
+                                }`}
+                              >
+                                📌{pat.isPinned ? '固定' : ''}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => removeShiftHistoryPattern(e, pat.key)}
+                                title="履歴から削除"
+                                className="text-[11px] text-slate-400 hover:text-rose-500 px-1 py-0.5"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className={`text-xs font-bold tracking-tight ${darkMode ? 'text-emerald-300' : 'text-emerald-800'}`}>
+                            {pat.startTime} 〜 {pat.endTime}
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-stone-100">
+                            <span className="text-slate-400">＋タップで追加</span>
+                            <span className={`font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                              +{Number(pat.pay).toLocaleString()}円
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
